@@ -85,8 +85,8 @@ export default function SettingsPage() {
   };
 
   const importBackup = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".db")) {
-      showToast("Please choose a .db file");
+    if (!file.name.toLowerCase().endsWith(".db") && !file.name.toLowerCase().endsWith(".dbi")) {
+      showToast("Please choose a .db backup file");
       return;
     }
 
@@ -240,7 +240,7 @@ export default function SettingsPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".db"
+              accept=".db,.dbi"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];

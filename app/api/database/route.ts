@@ -1,21 +1,48 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { NextResponse } from "next/server";
 import {
   CloseDb,
+  CreateDatabaseBackup,
   GetDatabasePath,
   ReopenDb,
+  RemoveWalFiles,
   ValidateDatabaseFile,
 } from "@/lib/server/db";
 
+function IsDatabaseBackupFile(fileName: string): boolean {
+  const lower = fileName.toLowerCase();
+  return lower.endsWith(".db") || lower.endsWith(".dbi");
+}
+
 export async function GET() {
+  const tempPath = path.join(
+    os.tmpdir(),
+    `dashboard-export-${Date.now()}.db`,
+  );
+
   try {
     const dbPath = GetDatabasePath();
     if (!fs.existsSync(dbPath)) {
       return NextResponse.json({ error: "Database not found" }, { status: 404 });
     }
 
-    const bytes = fs.readFileSync(dbPath);
+    await CreateDatabaseBackup(tempPath);
+
+    const validation = ValidateDatabaseFile(tempPath);
+    if (!validation.valid) {
+      return NextResponse.json(
+        {
+          error:
+            validation.reason ??
+            "Live database could not be exported with dashboard tables",
+        },
+        { status: 500 },
+      );
+    }
+
+    const bytes = fs.readFileSync(tempPath);
     const stamp = new Date().toISOString().slice(0, 10);
     const filename = `dashboard-backup-${stamp}.db`;
 
@@ -32,6 +59,17 @@ export async function GET() {
       { error: "Failed to export database" },
       { status: 500 },
     );
+  } finally {
+    try {
+      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    } catch {
+      /* ignore */
+    }
+    try {
+      ReopenDb();
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -44,9 +82,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "file is required" }, { status: 400 });
     }
 
-    if (!file.name.toLowerCase().endsWith(".db")) {
+    if (!IsDatabaseBackupFile(file.name)) {
       return NextResponse.json(
-        { error: "Only .db files are supported" },
+        { error: "Choose a .db backup file exported from Settings" },
         { status: 400 },
       );
     }
@@ -62,10 +100,11 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(uploadPath, buffer);
 
-    if (!ValidateDatabaseFile(uploadPath)) {
+    const validation = ValidateDatabaseFile(uploadPath);
+    if (!validation.valid) {
       fs.unlinkSync(uploadPath);
       return NextResponse.json(
-        { error: "Invalid SQLite database file" },
+        { error: validation.reason ?? "Invalid SQLite database file" },
         { status: 400 },
       );
     }
@@ -77,6 +116,7 @@ export async function POST(request: Request) {
     }
 
     fs.renameSync(uploadPath, dbPath);
+    RemoveWalFiles(dbPath);
     ReopenDb();
 
     return NextResponse.json({ ok: true, backupPath });

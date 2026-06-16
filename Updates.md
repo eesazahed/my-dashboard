@@ -1,5 +1,14 @@
 # Updates
 
+## 2026-06-16 (database export backup API)
+
+- Export uses SQLite backup API so tables/data are included (fixes empty backup imports)
+
+## 2026-06-16 (database backup import fix)
+
+- Export checkpoints SQLite WAL before download so backups import cleanly
+- Import accepts .db/.dbi, clears stale WAL files, clearer error messages
+
 ## 2026-06-16 (login refresh loop fix)
 
 - Login page no longer fetches bootstrap or redirects to itself on 401

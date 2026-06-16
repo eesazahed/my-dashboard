@@ -126,26 +126,68 @@ export function ReopenDb(): Database.Database {
   return GetDb();
 }
 
-export function ValidateDatabaseFile(filePath: string): boolean {
+export async function CreateDatabaseBackup(destinationPath: string): Promise<void> {
+  const database = GetDb();
+  await database.backup(destinationPath);
+}
+
+export function CheckpointDatabase(): void {
+  const database = GetDb();
+  database.pragma("wal_checkpoint(TRUNCATE)");
+}
+
+export function ValidateDatabaseFile(filePath: string): {
+  valid: boolean;
+  reason?: string;
+} {
   let testDb: Database.Database | null = null;
 
   try {
+    const header = fs.readFileSync(filePath).subarray(0, 16).toString("utf8");
+    if (!header.startsWith("SQLite format 3")) {
+      return {
+        valid: false,
+        reason:
+          "File is not a SQLite database. If you renamed it, make sure the export ended in .db and is not an HTML/JSON error page.",
+      };
+    }
+
     testDb = new Database(filePath, { readonly: true });
     const integrity = testDb.pragma("integrity_check", {
       simple: true,
     }) as string;
-    if (integrity !== "ok") return false;
+    if (integrity !== "ok") {
+      return { valid: false, reason: `Integrity check failed: ${integrity}` };
+    }
 
-    const tables = testDb
+    const settingsTable = testDb
       .prepare(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'settings'",
       )
       .get();
-    return tables != null;
+
+    if (!settingsTable) {
+      return {
+        valid: false,
+        reason: "Missing dashboard tables. Use a backup exported from this app.",
+      };
+    }
+
+    return { valid: true };
   } catch {
-    return false;
+    return { valid: false, reason: "Could not open file as SQLite database" };
   } finally {
     testDb?.close();
+  }
+}
+
+export function RemoveWalFiles(dbPath: string): void {
+  for (const suffix of ["-wal", "-shm"]) {
+    try {
+      fs.unlinkSync(`${dbPath}${suffix}`);
+    } catch {
+      /* file may not exist */
+    }
   }
 }
 
