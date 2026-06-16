@@ -1,7 +1,10 @@
 async function HandleUnauthorized(response: Response): Promise<void> {
-  if (response.status === 401 && typeof window !== "undefined") {
-    window.location.href = "/login";
-  }
+  if (response.status !== 401 || typeof window === "undefined") return;
+
+  const onLoginPage = window.location.pathname.startsWith("/login");
+  if (onLoginPage) return;
+
+  window.location.href = "/login";
 }
 
 export async function ApiGet<T>(path: string): Promise<T> {

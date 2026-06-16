@@ -138,6 +138,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, [fetchEventsForRange]);
 
   useEffect(() => {
+    const onLoginPage =
+      typeof window !== "undefined" &&
+      window.location.pathname.startsWith("/login");
+
+    if (onLoginPage) {
+      setReady(true);
+      return;
+    }
+
     loadDashboard().catch(() => {
       setReady(true);
     });

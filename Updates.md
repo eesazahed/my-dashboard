@@ -1,5 +1,9 @@
 # Updates
 
+## 2026-06-16 (login refresh loop fix)
+
+- Login page no longer fetches bootstrap or redirects to itself on 401
+
 ## 2026-06-15 (settings latest commit)
 
 - Settings shows latest GitHub commit hash and relative time for eesazahed/my-dashboard
