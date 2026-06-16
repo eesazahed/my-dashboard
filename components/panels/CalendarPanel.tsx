@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -26,6 +26,7 @@ import {
   getTodayIso,
   parseIsoDate,
 } from "@/lib/date-utils";
+import { GetEventRangeBuffer, GetWeekEventRange } from "@/lib/event-range";
 import {
   formatDayTitle,
   formatMonthTitle,
@@ -43,8 +44,14 @@ import { ItemActionBar } from "@/components/ui/ItemActionBar";
 import { Panel } from "@/components/ui/Panel";
 
 export function CalendarPanel() {
-  const { selectedDate, setSelectedDate, events, setEvents, showToast } =
-    useDashboard();
+  const {
+    selectedDate,
+    setSelectedDate,
+    events,
+    setEvents,
+    fetchEventsForRange,
+    showToast,
+  } = useDashboard();
   const [view, setView] = useState<CalendarView>("month");
   const [viewDate, setViewDate] = useState(() => parseIsoDate(getTodayIso()));
   const [modalOpen, setModalOpen] = useState(false);
@@ -64,6 +71,17 @@ export function CalendarPanel() {
     [expandedEvents],
   );
   const weekdayLabels = getWeekdayLabels();
+
+  useEffect(() => {
+    const range =
+      view === "week"
+        ? GetWeekEventRange(formatIsoDate(viewDate))
+        : view === "month"
+          ? GetEventRangeBuffer(viewDate)
+          : GetEventRangeBuffer(viewDate, 0);
+
+    void fetchEventsForRange(range.from, range.to);
+  }, [view, viewDate, fetchEventsForRange]);
 
   const openCreateModal = (date: string) => {
     setSelectedDate(date);
@@ -161,6 +179,7 @@ export function CalendarPanel() {
           e.stopPropagation();
           setActiveEventId(isActive ? null : item.id);
         }}
+        onDoubleClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.stopPropagation();
@@ -370,18 +389,20 @@ export function CalendarPanel() {
                   return (
                     <div
                       key={cell.iso}
-                      className={`flex min-h-[480px] flex-col rounded-xl border p-3 transition ${
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleSelectDate(cell.iso)}
+                      onDoubleClick={() => openCreateModal(cell.iso)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSelectDate(cell.iso);
+                      }}
+                      className={`flex min-h-[480px] cursor-pointer flex-col rounded-xl border p-3 text-left transition ${
                         isSelected
                           ? "border-white/20 bg-white/[0.06]"
-                          : "border-white/[0.05] bg-white/[0.02]"
+                          : "border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]"
                       }`}
                     >
-                      <button
-                        type="button"
-                        onClick={() => handleSelectDate(cell.iso)}
-                        onDoubleClick={() => openCreateModal(cell.iso)}
-                        className="shrink-0 border-b border-white/[0.05] pb-2 text-left"
-                      >
+                      <div className="shrink-0 border-b border-white/[0.05] pb-2">
                         <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
                           {cell.date.toLocaleDateString(undefined, {
                             weekday: "short",
@@ -394,7 +415,7 @@ export function CalendarPanel() {
                         >
                           {cell.date.getDate()}
                         </p>
-                      </button>
+                      </div>
                       <div className="mt-2 flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
                         {dayEventsList.length === 0 ? (
                           <p className="py-4 text-center text-[11px] text-zinc-600">

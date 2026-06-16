@@ -58,14 +58,65 @@ export function isDateInWeek(dateStr: string, reference: Date): boolean {
   return date >= start && date <= end;
 }
 
+export function countHabitLogsForDate(habit: Habit, dateStr: string): number {
+  return habit.log.filter((entry) => entry.date === dateStr).length;
+}
+
 export function countHabitCompletions(habit: Habit, reference: Date): number {
   const today = formatIsoDate(reference);
   if (habit.frequency === "daily") {
-    return habit.log.filter((entry) => entry.date === today).length;
+    return countHabitLogsForDate(habit, today);
   }
   return habit.log.filter((entry) =>
     isDateInWeek(entry.date, reference),
   ).length;
+}
+
+function IsHabitDayComplete(habit: Habit, dateStr: string): boolean {
+  return countHabitLogsForDate(habit, dateStr) >= habit.target;
+}
+
+function IsHabitWeekComplete(habit: Habit, reference: Date): boolean {
+  return (
+    habit.log.filter((entry) => isDateInWeek(entry.date, reference)).length >=
+    habit.target
+  );
+}
+
+export function GetHabitStreak(habit: Habit, reference: Date = new Date()): number {
+  if (habit.frequency === "daily") {
+    let streak = 0;
+    const cursor = new Date(reference);
+    const todayIso = formatIsoDate(reference);
+
+    if (!IsHabitDayComplete(habit, todayIso)) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    while (streak < 3650) {
+      const dateIso = formatIsoDate(cursor);
+      if (!IsHabitDayComplete(habit, dateIso)) break;
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    return streak;
+  }
+
+  let streak = 0;
+  const cursor = getWeekStart(reference);
+
+  if (!IsHabitWeekComplete(habit, reference)) {
+    cursor.setDate(cursor.getDate() - 7);
+  }
+
+  while (streak < 520) {
+    if (!IsHabitWeekComplete(habit, cursor)) break;
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 7);
+  }
+
+  return streak;
 }
 
 export function filterEventsByDate(

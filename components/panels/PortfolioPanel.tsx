@@ -207,7 +207,7 @@ export function PortfolioPanel() {
             <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-0.5">
               {summary.rows.map((row) => (
                 <li
-                  key={row.ticker}
+                  key={row.id}
                   className="rounded-lg border border-white/[0.05] bg-white/[0.02] px-3 py-2.5"
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -221,15 +221,7 @@ export function PortfolioPanel() {
                     </div>
                     <button
                       type="button"
-                      onClick={() =>
-                        removeHolding(
-                          portfolio.find(
-                            (holding) =>
-                              holding.ticker.toUpperCase() ===
-                              row.ticker.toUpperCase(),
-                          )?.id ?? "",
-                        )
-                      }
+                      onClick={() => removeHolding(row.id)}
                       className="text-[10px] text-zinc-600 transition hover:text-red-400"
                     >
                       Remove

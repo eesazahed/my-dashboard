@@ -22,6 +22,7 @@ export type Habit = {
   frequency: "daily" | "weekly";
   target: number;
   log: { date: string }[];
+  streak?: number;
 };
 
 export type QuickLink = {

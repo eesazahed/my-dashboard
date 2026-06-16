@@ -11,16 +11,29 @@ import {
   type ReactNode,
 } from "react";
 import { Toast } from "@/components/ui/Toast";
-import { generateId, getTodayIso } from "@/lib/date-utils";
+import { ApiGet, ApiPut } from "@/lib/api-client";
+import { getTodayIso } from "@/lib/date-utils";
+import {
+  GetEventRangeBuffer,
+  MergeBaseEvents,
+  RangeKey,
+} from "@/lib/event-range";
 import {
   DefaultSettings,
-  StorageKeys,
   type DashboardEvent,
   type Habit,
-  type QuickLink,
   type PortfolioHolding,
+  type QuickLink,
   type Settings,
 } from "@/lib/types";
+
+type BootstrapResponse = {
+  settings: Settings;
+  habits: Habit[];
+  quickLinks: QuickLink[];
+  portfolio: PortfolioHolding[];
+  thoughtDump: string;
+};
 
 type DashboardContextValue = {
   ready: boolean;
@@ -30,6 +43,7 @@ type DashboardContextValue = {
   setEvents: (
     value: DashboardEvent[] | ((prev: DashboardEvent[]) => DashboardEvent[]),
   ) => void;
+  fetchEventsForRange: (from: string, to: string) => Promise<void>;
   habits: Habit[];
   setHabits: (value: Habit[] | ((prev: Habit[]) => Habit[])) => void;
   settings: Settings;
@@ -48,82 +62,10 @@ type DashboardContextValue = {
   setThoughtDump: (value: string | ((prev: string) => string)) => void;
   toast: string | null;
   showToast: (message: string) => void;
+  reloadDashboard: () => Promise<void>;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
-
-function readStorage<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw !== null) return JSON.parse(raw) as T;
-  } catch {
-    /* corrupt data */
-  }
-  return fallback;
-}
-
-function writeStorage<T>(key: string, value: T): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* quota */
-  }
-}
-
-function seedFirstVisitData(): void {
-  if (localStorage.getItem("dashboard:seeded")) return;
-
-  const today = getTodayIso();
-
-  writeStorage(StorageKeys.settings, {
-    ...DefaultSettings,
-    name: "Eesa",
-  });
-
-  writeStorage(StorageKeys.events, [
-    {
-      id: generateId(),
-      title: "Investor demo",
-      date: today,
-      time: "14:00",
-      type: "event",
-    },
-    {
-      id: generateId(),
-      title: "Review pitch deck",
-      date: today,
-      type: "task",
-      completed: false,
-    },
-  ] satisfies DashboardEvent[]);
-
-  writeStorage(StorageKeys.habits, [
-    {
-      id: generateId(),
-      name: "Morning workout",
-      frequency: "daily",
-      target: 1,
-      log: [],
-    },
-  ] satisfies Habit[]);
-
-  writeStorage(StorageKeys.quickLinks, [
-    {
-      id: generateId(),
-      label: "GitHub",
-      url: "https://github.com",
-      icon: "brand-github",
-    },
-    {
-      id: generateId(),
-      label: "LinkedIn",
-      url: "https://linkedin.com",
-      icon: "brand-linkedin",
-    },
-  ] satisfies QuickLink[]);
-
-  localStorage.setItem("dashboard:seeded", "1");
-}
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -137,25 +79,69 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<{ id: number; message: string } | null>(
     null,
   );
+
   const toastIdRef = useRef(0);
+  const eventsRef = useRef<DashboardEvent[]>([]);
+  const loadedRangesRef = useRef<Set<string>>(new Set());
+  const pendingRangeFetchesRef = useRef<Map<string, Promise<void>>>(new Map());
 
   useEffect(() => {
-    seedFirstVisitData();
-
-    setEventsState(readStorage(StorageKeys.events, []));
-    setHabitsState(readStorage(StorageKeys.habits, []));
-    setSettingsState(readStorage(StorageKeys.settings, DefaultSettings));
-    setQuickLinksState(readStorage(StorageKeys.quickLinks, []));
-    setPortfolioState(readStorage(StorageKeys.portfolio, []));
-    setThoughtDumpState(readStorage(StorageKeys.thoughtDump, ""));
-    setSelectedDate(getTodayIso());
-    setReady(true);
-  }, []);
+    eventsRef.current = events;
+  }, [events]);
 
   const showToast = useCallback((message: string) => {
     toastIdRef.current += 1;
     setToast({ id: toastIdRef.current, message });
   }, []);
+
+  const fetchEventsForRange = useCallback(async (from: string, to: string) => {
+    const key = RangeKey(from, to);
+    if (loadedRangesRef.current.has(key)) return;
+
+    const pending = pendingRangeFetchesRef.current.get(key);
+    if (pending) {
+      await pending;
+      return;
+    }
+
+    const request = (async () => {
+      const data = await ApiGet<{ events: DashboardEvent[] }>(
+        `/api/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      );
+      loadedRangesRef.current.add(key);
+      setEventsState((prev) => MergeBaseEvents(prev, data.events));
+    })();
+
+    pendingRangeFetchesRef.current.set(key, request);
+
+    try {
+      await request;
+    } finally {
+      pendingRangeFetchesRef.current.delete(key);
+    }
+  }, []);
+
+  const loadDashboard = useCallback(async () => {
+    const bootstrap = await ApiGet<BootstrapResponse>("/api/bootstrap");
+    setSettingsState(bootstrap.settings);
+    setHabitsState(bootstrap.habits);
+    setQuickLinksState(bootstrap.quickLinks);
+    setPortfolioState(bootstrap.portfolio);
+    setThoughtDumpState(bootstrap.thoughtDump);
+
+    const initialRange = GetEventRangeBuffer(new Date());
+    loadedRangesRef.current.clear();
+    setEventsState([]);
+    await fetchEventsForRange(initialRange.from, initialRange.to);
+    setSelectedDate(getTodayIso());
+    setReady(true);
+  }, [fetchEventsForRange]);
+
+  useEffect(() => {
+    loadDashboard().catch(() => {
+      setReady(true);
+    });
+  }, [loadDashboard]);
 
   const setEvents = useCallback(
     (
@@ -163,44 +149,59 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     ) => {
       setEventsState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        writeStorage(StorageKeys.events, next);
+        void ApiPut("/api/events/sync", { previous: prev, next }).catch(() => {
+          showToast("Failed to save events");
+        });
         return next;
       });
     },
-    [],
+    [showToast],
   );
 
   const setHabits = useCallback(
     (value: Habit[] | ((prev: Habit[]) => Habit[])) => {
       setHabitsState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        writeStorage(StorageKeys.habits, next);
+        const persistable = next.map(({ id, name, frequency, target, log }) => ({
+          id,
+          name,
+          frequency,
+          target,
+          log,
+        }));
+        void ApiPut("/api/habits", { habits: persistable }).catch(() => {
+          showToast("Failed to save habits");
+        });
         return next;
       });
     },
-    [],
+    [showToast],
   );
 
   const setSettings = useCallback(
     (value: Settings | ((prev: Settings) => Settings)) => {
       setSettingsState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        writeStorage(StorageKeys.settings, next);
+        void ApiPut("/api/settings", { settings: next }).catch(() => {
+          showToast("Failed to save settings");
+        });
         return next;
       });
     },
-    [],
+    [showToast],
   );
 
   const setQuickLinks = useCallback(
     (value: QuickLink[] | ((prev: QuickLink[]) => QuickLink[])) => {
       setQuickLinksState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        writeStorage(StorageKeys.quickLinks, next);
+        void ApiPut("/api/quick-links", { quickLinks: next }).catch(() => {
+          showToast("Failed to save quick links");
+        });
         return next;
       });
     },
-    [],
+    [showToast],
   );
 
   const setPortfolio = useCallback(
@@ -211,23 +212,32 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     ) => {
       setPortfolioState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        writeStorage(StorageKeys.portfolio, next);
+        void ApiPut("/api/portfolio", { portfolio: next }).catch(() => {
+          showToast("Failed to save portfolio");
+        });
         return next;
       });
     },
-    [],
+    [showToast],
   );
 
   const setThoughtDump = useCallback(
     (value: string | ((prev: string) => string)) => {
       setThoughtDumpState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        writeStorage(StorageKeys.thoughtDump, next);
+        void ApiPut("/api/thought-dump", { content: next }).catch(() => {
+          showToast("Failed to save thought dump");
+        });
         return next;
       });
     },
-    [],
+    [showToast],
   );
+
+  const reloadDashboard = useCallback(async () => {
+    setReady(false);
+    await loadDashboard();
+  }, [loadDashboard]);
 
   const value = useMemo(
     () => ({
@@ -236,6 +246,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setSelectedDate,
       events,
       setEvents,
+      fetchEventsForRange,
       habits,
       setHabits,
       settings,
@@ -248,12 +259,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setThoughtDump,
       toast: toast?.message ?? null,
       showToast,
+      reloadDashboard,
     }),
     [
       ready,
       selectedDate,
       events,
       setEvents,
+      fetchEventsForRange,
       habits,
       setHabits,
       settings,
@@ -266,6 +279,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setThoughtDump,
       toast,
       showToast,
+      reloadDashboard,
     ],
   );
 

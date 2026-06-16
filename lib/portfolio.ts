@@ -108,7 +108,12 @@ function WriteCache(tickersKey: string, quotes: StockQuote[]): void {
 }
 
 export function CalculatePortfolioSummary(
-  holdings: Array<{ shares: number; costBasis: number; ticker: string }>,
+  holdings: Array<{
+    id: string;
+    shares: number;
+    costBasis: number;
+    ticker: string;
+  }>,
   quotes: StockQuote[],
 ) {
   const quoteMap = new Map(

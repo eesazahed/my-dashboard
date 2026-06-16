@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { IconPlus, IconTarget } from "@tabler/icons-react";
+import { IconMinus, IconPlus, IconTarget } from "@tabler/icons-react";
 import { useDashboard } from "@/context/DashboardContext";
-import { countHabitCompletions, generateId, getTodayIso } from "@/lib/date-utils";
+import {
+  countHabitCompletions,
+  countHabitLogsForDate,
+  generateId,
+  GetHabitStreak,
+  getTodayIso,
+} from "@/lib/date-utils";
 import type { Habit } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -24,13 +30,16 @@ export function HabitsPanel() {
   const today = new Date();
   const todayIso = getTodayIso();
 
-  const logCompletion = (habitId: string) => {
+  const logCompletion = (habit: Habit) => {
+    const completions = countHabitCompletions(habit, today);
+    if (completions >= habit.target) return;
+
     setHabits((prev) =>
-      prev.map((habit) => {
-        if (habit.id !== habitId) return habit;
-        if (habit.log.some((entry) => entry.date === todayIso)) return habit;
-        return { ...habit, log: [...habit.log, { date: todayIso }] };
-      }),
+      prev.map((item) =>
+        item.id === habit.id
+          ? { ...item, log: [...item.log, { date: todayIso }] }
+          : item,
+      ),
     );
     showToast("Habit logged ✓");
   };
@@ -39,14 +48,16 @@ export function HabitsPanel() {
     setHabits((prev) =>
       prev.map((habit) => {
         if (habit.id !== habitId) return habit;
-        const todayIndex = habit.log.findIndex((entry) => entry.date === todayIso);
+        const todayIndex = habit.log.findLastIndex(
+          (entry) => entry.date === todayIso,
+        );
         if (todayIndex === -1) return habit;
         const log = [...habit.log];
         log.splice(todayIndex, 1);
         return { ...habit, log };
       }),
     );
-    showToast("Today's log removed");
+    showToast("Habit unlogged");
   };
 
   const addHabit = () => {
@@ -100,8 +111,11 @@ export function HabitsPanel() {
     showToast("Habit updated ✓");
   };
 
-  const isLoggedToday = (habit: Habit) =>
-    habit.log.some((entry) => entry.date === todayIso);
+  const canLogMore = (habit: Habit) =>
+    countHabitCompletions(habit, today) < habit.target;
+
+  const canUnlogToday = (habit: Habit) =>
+    countHabitLogsForDate(habit, todayIso) > 0;
 
   return (
     <>
@@ -152,7 +166,7 @@ export function HabitsPanel() {
             <ul className="space-y-3">
             {habits.map((habit) => {
               const completions = countHabitCompletions(habit, today);
-              const logged = isLoggedToday(habit);
+              const streak = GetHabitStreak(habit, today);
               const isActive = activeId === habit.id;
 
               return (
@@ -170,11 +184,18 @@ export function HabitsPanel() {
                       : "border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]"
                   }`}
                 >
-                  <div className="mb-2.5 flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-medium text-zinc-100">
-                      {habit.name}
-                    </span>
-                    <span className="rounded-md bg-white/[0.04] px-2 py-0.5 text-[10px] capitalize text-zinc-500">
+                  <div className="mb-2.5 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-[13px] font-medium text-zinc-100">
+                        {habit.name}
+                      </span>
+                      {streak >= 2 && (
+                        <p className="mt-0.5 text-[11px] font-medium tabular-nums text-orange-400">
+                          {streak}x streak
+                        </p>
+                      )}
+                    </div>
+                    <span className="shrink-0 rounded-md bg-white/[0.04] px-2 py-0.5 text-[10px] capitalize text-zinc-500">
                       {habit.frequency}
                     </span>
                   </div>
@@ -183,24 +204,32 @@ export function HabitsPanel() {
                     <span className="text-[11px] tabular-nums text-zinc-500">
                       {completions}/{habit.target} done
                     </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (logged) {
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           unlogToday(habit.id);
-                        } else {
-                          logCompletion(habit.id);
-                        }
-                      }}
-                      className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
-                        logged
-                          ? "bg-white/[0.06] text-zinc-400 hover:bg-white/[0.1] hover:text-zinc-200"
-                          : "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]"
-                      }`}
-                    >
-                      {logged ? "Unlog today" : "Log today"}
-                    </button>
+                        }}
+                        disabled={!canUnlogToday(habit)}
+                        className="rounded-md p-1.5 text-zinc-500 transition hover:bg-white/[0.08] hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label="Remove one log for today"
+                      >
+                        <IconMinus size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          logCompletion(habit);
+                        }}
+                        disabled={!canLogMore(habit)}
+                        className="rounded-md p-1.5 text-zinc-500 transition hover:bg-white/[0.08] hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label="Log one completion"
+                      >
+                        <IconPlus size={14} />
+                      </button>
+                    </div>
                   </div>
                   {isActive && (
                     <div className="mt-2.5 flex justify-end border-t border-white/[0.05] pt-2">

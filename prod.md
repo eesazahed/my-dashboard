@@ -160,6 +160,9 @@ export type Settings = {
 - Dragging an event updates its `date`/`time` in storage
 - "+" button or click-on-empty-slot opens a small inline form (title, date, time, type: event/task)
 
+
+
+
 ### AgendaPanel ("Today's agenda")
 - Title reflects `selectedDate` (e.g. "Today" if it equals today's date, otherwise the formatted date)
 - Filters `events` where `event.date === selectedDate`, sorted by `time` ascending (undated items last)

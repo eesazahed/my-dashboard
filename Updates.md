@@ -1,5 +1,35 @@
 # Updates
 
+## 2026-06-15 (settings latest commit)
+
+- Settings shows latest GitHub commit hash and relative time for eesazahed/my-dashboard
+
+## 2026-06-15 (SQLite, auth, lazy events, backup)
+
+- Replaced localStorage with SQLite (`data/dashboard.db`, gitignored)
+- Password login at `/login` with session cookie (`DASHBOARD_PASSWORD`, `SESSION_SECRET` in `.env`)
+- Events lazy-loaded by month range; habits/portfolio/settings load on bootstrap
+- Habit streaks computed server-side on bootstrap
+- Settings: download/import full `.db` backup
+- Portfolio duplicate-ticker fix (`key` + remove by `id`)
+- Nest: set `PORT=33541` in `.env`, `npm run build && npm run start`
+
+## 2026-06-15 (week view day select)
+
+- Week view: entire day column is clickable to switch selected date
+
+## 2026-06-15 (habit streaks)
+
+- Orange Nx streak when a habit hits 100% of target for 2+ consecutive days (or weeks)
+
+## 2026-06-15 (habit multi-log)
+
+- Daily/weekly habits use +/− to log multiple completions up to target (e.g. 3/5 prayers)
+
+## 2026-06-15 (agenda add button)
+
+- Agenda panel header + opens new event/task modal for the selected day
+
 ## 2026-06-15 (news top 10, larger text)
 
 - BBC + Hacker News show top 10 headlines each with slightly larger type

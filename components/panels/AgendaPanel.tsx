@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IconChecklist } from "@tabler/icons-react";
+import { IconChecklist, IconPlus } from "@tabler/icons-react";
 import { useDashboard } from "@/context/DashboardContext";
 import {
   EventEditorModal,
@@ -67,18 +67,33 @@ export function AgendaPanel() {
     setEditingEvent(null);
   };
 
+  const openCreate = () => {
+    setEditingEvent(null);
+    setModalOpen(true);
+  };
+
   return (
     <>
       <Panel
         fillHeight
         title={`${formatAgendaTitle(activeDate)}'s agenda`}
         subtitle="Click an item to edit or delete"
+        action={
+          <button
+            type="button"
+            onClick={openCreate}
+            className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+            aria-label="Add event or task"
+          >
+            <IconPlus size={16} />
+          </button>
+        }
       >
         {dayEvents.length === 0 ? (
           <EmptyState
             icon={<IconChecklist size={20} />}
             title="Clear schedule"
-            description="Select a day or add an event with +"
+            description="Add an event or task with +"
           />
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
