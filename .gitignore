@@ -33,8 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# local sqlite database
-/data/
+# local sqlite database (files stay on server only)
+/data/*
+!/data/.gitignore
 *.db
 *.db-*
 

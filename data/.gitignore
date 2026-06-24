@@ -1,0 +1,3 @@
+# Keep SQLite data out of git — lives only on the server
+*
+!.gitignore

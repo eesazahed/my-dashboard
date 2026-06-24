@@ -18,7 +18,7 @@ export function ThoughtDumpBar() {
         onChange={(e) => setThoughtDump(e.target.value)}
         placeholder="Jot down ideas, tasks, reminders — anything on your mind…"
         rows={3}
-        className="w-full resize-none bg-transparent px-5 py-4 text-sm leading-relaxed text-zinc-200 outline-none placeholder:text-zinc-600"
+        className="thought-dump-textarea w-full resize-y overflow-y-auto bg-transparent px-5 py-4 text-sm leading-relaxed text-zinc-200 outline-none placeholder:text-zinc-600"
       />
     </section>
   );

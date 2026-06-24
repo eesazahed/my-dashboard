@@ -1,5 +1,14 @@
 # Updates
 
+## 2026-06-16 (Nest update.sh)
+
+- `update.sh` — pull, install, build, restart systemd; backs up `.db` before each deploy
+- `data/.gitignore` — extra guard so database files are never committed
+
+## 2026-06-16 (thought dump scrollbars + resize)
+
+- Thought dump shows scrollbars when content overflows, vertically resizable, default height on each load
+
 ## 2026-06-16 (database export backup API)
 
 - Export uses SQLite backup API so tables/data are included (fixes empty backup imports)

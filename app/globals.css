@@ -72,3 +72,29 @@ body {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
+.thought-dump-textarea {
+  min-height: 5.5rem;
+  max-height: 20rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.14) transparent;
+  -ms-overflow-style: auto;
+}
+
+.thought-dump-textarea::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+
+.thought-dump-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thought-dump-textarea::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.14);
+  border-radius: 4px;
+}
+
+.thought-dump-textarea::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 0.22);
+}
