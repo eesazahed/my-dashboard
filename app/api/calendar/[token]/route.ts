@@ -23,12 +23,18 @@ export async function GET(request: Request, context: RouteContext) {
     ? `${settings.name.trim()} — Dashboard`
     : "My Dashboard";
   const events = ReadEventsForCalendarFeed();
-  const body = BuildIcsCalendar(events, origin, calendarName);
+  const body = BuildIcsCalendar(
+    events,
+    origin,
+    calendarName,
+    settings.timezone,
+  );
 
   return new Response(body, {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Cache-Control": "public, max-age=300",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
     },
   });
 }

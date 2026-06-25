@@ -1,6 +1,27 @@
 import { parseIsoDate } from "./date-utils";
 import type { DashboardEvent } from "./types";
 
+export function FormatMilitaryDateTimeInTimezone(
+  date: Date,
+  timeZone: string,
+): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+
+  return `${get("weekday")}, ${get("month")} ${get("day")} · ${get("hour")}:${get("minute")}:${get("second")}`;
+}
+
 export function FormatMilitaryDateTime(date: Date): string {
   const weekday = date.toLocaleDateString(undefined, { weekday: "short" });
   const month = date.toLocaleDateString(undefined, { month: "short" });

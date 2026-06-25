@@ -10,6 +10,7 @@ import { DefaultSettings } from "@/lib/types";
 import { GetHabitStreak } from "@/lib/date-utils";
 import { ExpandAllEventOccurrences } from "@/lib/recurrence-utils";
 import { generateId, getTodayIso } from "@/lib/date-utils";
+import { ResolveTimezone } from "@/lib/timezones";
 import { GetDb } from "@/lib/server/db";
 
 type EventRow = {
@@ -80,8 +81,8 @@ export function SeedDatabaseIfEmpty(): void {
   database
     .prepare(
       `INSERT INTO settings (
-        id, name, location_lat, location_lon, location_label, active_widget, news_category
-      ) VALUES (1, ?, ?, ?, ?, ?, ?)`,
+        id, name, location_lat, location_lon, location_label, active_widget, news_category, timezone
+      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       "Eesa",
@@ -90,6 +91,7 @@ export function SeedDatabaseIfEmpty(): void {
       DefaultSettings.location.label,
       DefaultSettings.activeWidget,
       DefaultSettings.newsCategory ?? "general",
+      DefaultSettings.timezone ?? ResolveTimezone(),
     );
 
   const insertEvent = database.prepare(
@@ -154,7 +156,7 @@ export function ReadSettings(): Settings {
   const database = GetDb();
   const row = database
     .prepare(
-      `SELECT name, location_lat, location_lon, location_label, active_widget, news_category
+      `SELECT name, location_lat, location_lon, location_label, active_widget, news_category, timezone
        FROM settings WHERE id = 1`,
     )
     .get() as
@@ -165,6 +167,7 @@ export function ReadSettings(): Settings {
         location_label: string;
         active_widget: string;
         news_category: string | null;
+        timezone: string | null;
       }
     | undefined;
 
@@ -179,6 +182,7 @@ export function ReadSettings(): Settings {
     },
     activeWidget: row.active_widget as Settings["activeWidget"],
     newsCategory: row.news_category ?? undefined,
+    timezone: ResolveTimezone(row.timezone ?? undefined),
   };
 }
 
@@ -187,15 +191,16 @@ export function WriteSettings(settings: Settings): void {
   database
     .prepare(
       `INSERT INTO settings (
-        id, name, location_lat, location_lon, location_label, active_widget, news_category
-      ) VALUES (1, @name, @lat, @lon, @label, @activeWidget, @newsCategory)
+        id, name, location_lat, location_lon, location_label, active_widget, news_category, timezone
+      ) VALUES (1, @name, @lat, @lon, @label, @activeWidget, @newsCategory, @timezone)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         location_lat = excluded.location_lat,
         location_lon = excluded.location_lon,
         location_label = excluded.location_label,
         active_widget = excluded.active_widget,
-        news_category = excluded.news_category`,
+        news_category = excluded.news_category,
+        timezone = excluded.timezone`,
     )
     .run({
       name: settings.name,
@@ -204,6 +209,7 @@ export function WriteSettings(settings: Settings): void {
       label: settings.location.label,
       activeWidget: settings.activeWidget,
       newsCategory: settings.newsCategory ?? null,
+      timezone: ResolveTimezone(settings.timezone),
     });
 }
 

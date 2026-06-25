@@ -3,18 +3,21 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useDashboard } from "@/context/DashboardContext";
-import { FormatMilitaryDateTime } from "@/lib/time-utils";
+import { ResolveTimezone } from "@/lib/timezones";
+import { FormatMilitaryDateTimeInTimezone } from "@/lib/time-utils";
 
 export function Header() {
   const { settings, ready } = useDashboard();
   const [timeLabel, setTimeLabel] = useState("");
+  const timezone = ResolveTimezone(settings.timezone);
 
   useEffect(() => {
-    const update = () => setTimeLabel(FormatMilitaryDateTime(new Date()));
+    const update = () =>
+      setTimeLabel(FormatMilitaryDateTimeInTimezone(new Date(), timezone));
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [timezone]);
 
   const displayName = settings.name.trim() || "there";
 

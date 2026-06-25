@@ -14,10 +14,12 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Panel } from "@/components/ui/Panel";
+import { Select } from "@/components/ui/Select";
 import { LatestCommitInfo } from "@/components/settings/LatestCommitInfo";
 import { CalendarFeedPanel } from "@/components/settings/CalendarFeedPanel";
 import { useDashboard } from "@/context/DashboardContext";
 import { generateId } from "@/lib/date-utils";
+import { TimezoneOptions } from "@/lib/timezones";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -156,6 +158,25 @@ export default function SettingsPage() {
         </Panel>
 
         <CalendarFeedPanel showToast={showToast} />
+
+        <Panel
+          title="Advanced"
+          subtitle="Timezone for the dashboard clock and exported calendar times"
+        >
+          <Select
+            label="Timezone"
+            value={settings.timezone ?? "America/Chicago"}
+            onChange={(e) =>
+              setSettings((prev) => ({ ...prev, timezone: e.target.value }))
+            }
+          >
+            {TimezoneOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </Panel>
 
         <Panel title="Portfolio" subtitle="Manual holdings · prices refresh hourly">
           {portfolio.length > 0 && (

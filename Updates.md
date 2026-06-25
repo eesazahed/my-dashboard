@@ -1,5 +1,10 @@
 # Updates
 
+## 2026-06-25 (timezone setting + iCal sync hints)
+
+- Settings → Advanced: timezone picker (default Central / America/Chicago) for header clock and iCal export
+- iCal feed uses TZID, no-cache headers, and refresh hints; Settings notes Google sync delay
+
 ## 2026-06-25 (event/task delete in editor)
 
 - Edit modal: trash icon in header instantly deletes events and tasks (not only events in advanced options)

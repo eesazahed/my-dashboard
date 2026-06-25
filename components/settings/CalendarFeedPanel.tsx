@@ -105,7 +105,10 @@ export function CalendarFeedPanel({ showToast }: CalendarFeedPanelProps) {
         </div>
         <p className="text-xs leading-relaxed text-zinc-500">
           This feed is public to anyone with the URL (events only, no tasks).
-          Keep the link private like a Google Calendar secret address.
+          Keep the link private like a Google Calendar secret address. Google
+          re-fetches subscribed calendars on its own schedule — often every few
+          hours, not instantly. Remove and re-add the calendar in Google to force
+          a refresh.
         </p>
       </div>
     </Panel>

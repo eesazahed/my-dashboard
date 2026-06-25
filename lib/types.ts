@@ -1,3 +1,5 @@
+import { DefaultTimezone } from "@/lib/timezones";
+
 export type EventRecurrence = {
   frequency: "daily" | "weekly";
   weekdays?: number[];
@@ -49,6 +51,7 @@ export type Settings = {
   location: { lat: number; lon: number; label: string };
   activeWidget: EditableWidgetType;
   newsCategory?: string;
+  timezone?: string;
 };
 
 export type NewsArticle = {
@@ -74,6 +77,7 @@ export const DefaultSettings: Settings = {
   location: { lat: 40.7128, lon: -74.006, label: "New York" },
   activeWidget: "news",
   newsCategory: "general",
+  timezone: DefaultTimezone,
 };
 
 export const CuratedBrandIcons = [

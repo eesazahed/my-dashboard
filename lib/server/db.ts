@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 
-const SchemaVersion = 2;
+const SchemaVersion = 3;
 
 let DatabaseInstance: Database.Database | null = null;
 
@@ -34,7 +34,8 @@ function RunMigrations(database: Database.Database): void {
       location_lon REAL NOT NULL DEFAULT -74.006,
       location_label TEXT NOT NULL DEFAULT 'New York',
       active_widget TEXT NOT NULL DEFAULT 'news',
-      news_category TEXT DEFAULT 'general'
+      news_category TEXT DEFAULT 'general',
+      timezone TEXT NOT NULL DEFAULT 'America/Chicago'
     );
 
     CREATE TABLE IF NOT EXISTS events (
@@ -122,6 +123,18 @@ function RunSchemaUpgrades(
 
     if (!eventColumns.some((column) => column.name === "color")) {
       database.exec("ALTER TABLE events ADD COLUMN color TEXT");
+    }
+  }
+
+  if (fromVersion < 3) {
+    const settingsColumns = database
+      .prepare("PRAGMA table_info(settings)")
+      .all() as { name: string }[];
+
+    if (!settingsColumns.some((column) => column.name === "timezone")) {
+      database.exec(
+        "ALTER TABLE settings ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/Chicago'",
+      );
     }
   }
 }
