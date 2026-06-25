@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  IconArrowsMaximize,
-  IconArrowsMinimize,
   IconChevronLeft,
   IconChevronRight,
+  IconExternalLink,
   IconPlus,
 } from "@tabler/icons-react";
 import {
@@ -50,15 +49,7 @@ import type { DashboardEvent } from "@/lib/types";
 import { ItemActionBar } from "@/components/ui/ItemActionBar";
 import { Panel } from "@/components/ui/Panel";
 
-type CalendarPanelProps = {
-  fullscreen?: boolean;
-  onToggleFullscreen?: () => void;
-};
-
-export function CalendarPanel({
-  fullscreen = false,
-  onToggleFullscreen,
-}: CalendarPanelProps) {
+export function CalendarPanel() {
   const {
     selectedDate,
     setSelectedDate,
@@ -287,20 +278,14 @@ export function CalendarPanel({
               >
                 <IconPlus size={16} stroke={2.5} />
               </button>
-              {onToggleFullscreen && (
-                <button
-                  type="button"
-                  onClick={onToggleFullscreen}
-                  className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
-                  aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen calendar"}
-                >
-                  {fullscreen ? (
-                    <IconArrowsMinimize size={16} />
-                  ) : (
-                    <IconArrowsMaximize size={16} />
-                  )}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => window.open("/calendar", "_blank", "noopener,noreferrer")}
+                className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
+                aria-label="Open calendar in new tab"
+              >
+                <IconExternalLink size={16} />
+              </button>
             </div>
           </div>
 

@@ -9,6 +9,18 @@ type CalendarFeedPanelProps = {
   showToast: (message: string) => void;
 };
 
+function ResolveFeedUrl(apiFeedUrl: string): string {
+  try {
+    const path = new URL(apiFeedUrl).pathname;
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}${path}`;
+    }
+    return apiFeedUrl;
+  } catch {
+    return apiFeedUrl;
+  }
+}
+
 export function CalendarFeedPanel({ showToast }: CalendarFeedPanelProps) {
   const [FeedUrl, SetFeedUrl] = useState("");
   const [Loading, SetLoading] = useState(true);
@@ -20,7 +32,7 @@ export function CalendarFeedPanel({ showToast }: CalendarFeedPanelProps) {
       const response = await fetch("/api/calendar/feed");
       if (!response.ok) throw new Error("Failed to load feed URL");
       const data = (await response.json()) as { feedUrl: string };
-      SetFeedUrl(data.feedUrl);
+      SetFeedUrl(ResolveFeedUrl(data.feedUrl));
     } catch {
       showToast("Could not load calendar feed URL");
     } finally {
@@ -53,7 +65,7 @@ export function CalendarFeedPanel({ showToast }: CalendarFeedPanelProps) {
       const response = await fetch("/api/calendar/feed", { method: "POST" });
       if (!response.ok) throw new Error("Failed to regenerate");
       const data = (await response.json()) as { feedUrl: string };
-      SetFeedUrl(data.feedUrl);
+      SetFeedUrl(ResolveFeedUrl(data.feedUrl));
       showToast("New calendar URL generated ✓");
     } catch {
       showToast("Could not regenerate URL");

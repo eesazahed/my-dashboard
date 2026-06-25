@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
+import { BuildPublicUrl } from "@/lib/public-origin";
 import {
   GetCalendarFeedToken,
   RegenerateCalendarFeedToken,
 } from "@/lib/server/data";
 
 function BuildFeedUrl(request: Request, token: string): string {
-  const url = new URL(request.url);
-  return `${url.origin}/api/calendar/${token}`;
+  return BuildPublicUrl(request, `/api/calendar/${token}`);
 }
 
 export async function GET(request: Request) {

@@ -1,5 +1,10 @@
 # Updates
 
+## 2026-06-23 (calendar new tab + feed URL fix)
+
+- Replaced fullscreen calendar with “open in new tab” (`/calendar` page)
+- Calendar subscription URL uses browser origin in Settings; server uses `APP_URL` / forwarded host headers
+
 ## 2026-06-23 (event colors, calendar fullscreen, iCal feed)
 
 - Calendar events/tasks: color picker in editor (same palette as quick links); colors on month/week/day views and agenda dots
