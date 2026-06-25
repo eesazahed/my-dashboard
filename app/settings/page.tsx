@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Panel } from "@/components/ui/Panel";
 import { LatestCommitInfo } from "@/components/settings/LatestCommitInfo";
+import { CalendarFeedPanel } from "@/components/settings/CalendarFeedPanel";
 import { useDashboard } from "@/context/DashboardContext";
 import { generateId } from "@/lib/date-utils";
 
@@ -153,6 +154,8 @@ export default function SettingsPage() {
             placeholder="e.g. Eesa"
           />
         </Panel>
+
+        <CalendarFeedPanel showToast={showToast} />
 
         <Panel title="Portfolio" subtitle="Manual holdings · prices refresh hourly">
           {portfolio.length > 0 && (

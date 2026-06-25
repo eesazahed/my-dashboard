@@ -11,6 +11,7 @@ import { filterEventsByDate, formatAgendaTitle, generateId, getTodayIso } from "
 import { CreateEventFromForm, UpdateEventFromForm } from "@/lib/event-utils";
 import { ParseBaseEventId } from "@/lib/recurrence-utils";
 import { FormatEventSchedule } from "@/lib/time-utils";
+import { GetEventDotClasses } from "@/lib/link-colors";
 import type { DashboardEvent } from "@/lib/types";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -125,7 +126,9 @@ export function AgendaPanel() {
                         />
                       </div>
                     ) : (
-                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-zinc-400" />
+                      <span
+                        className={`mt-1.5 size-1.5 shrink-0 rounded-full ${GetEventDotClasses(event.color, event.type)}`}
+                      />
                     )}
                     <div className="min-w-0 flex-1">
                       <p

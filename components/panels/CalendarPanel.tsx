@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  IconArrowsMaximize,
+  IconArrowsMinimize,
   IconChevronLeft,
   IconChevronRight,
   IconPlus,
@@ -39,11 +41,24 @@ import {
   type CalendarView,
 } from "@/lib/calendar-utils";
 import { FormatEventSchedule } from "@/lib/time-utils";
+import {
+  GetEventBarClasses,
+  GetEventCardClasses,
+  GetEventChipClasses,
+} from "@/lib/link-colors";
 import type { DashboardEvent } from "@/lib/types";
 import { ItemActionBar } from "@/components/ui/ItemActionBar";
 import { Panel } from "@/components/ui/Panel";
 
-export function CalendarPanel() {
+type CalendarPanelProps = {
+  fullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+};
+
+export function CalendarPanel({
+  fullscreen = false,
+  onToggleFullscreen,
+}: CalendarPanelProps) {
   const {
     selectedDate,
     setSelectedDate,
@@ -188,13 +203,9 @@ export function CalendarPanel() {
         }}
         className={`rounded-lg border text-left transition ${
           compact ? "px-2 py-1.5" : "px-4 py-3"
-        } ${
-          item.type === "task"
-            ? "border-blue-500/20 bg-blue-500/10"
-            : "border-white/[0.06] bg-white/[0.04]"
-        } ${item.completed ? "opacity-50 line-through" : ""} ${
-          isActive ? "ring-1 ring-white/20" : ""
-        }`}
+        } ${GetEventCardClasses(item.color, item.type)} ${
+          item.completed ? "opacity-50 line-through" : ""
+        } ${isActive ? "ring-1 ring-white/20" : ""}`}
       >
         {FormatEventSchedule(item) ? (
           <p className="text-[10px] tabular-nums text-zinc-500">
@@ -276,6 +287,20 @@ export function CalendarPanel() {
               >
                 <IconPlus size={16} stroke={2.5} />
               </button>
+              {onToggleFullscreen && (
+                <button
+                  type="button"
+                  onClick={onToggleFullscreen}
+                  className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-100"
+                  aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen calendar"}
+                >
+                  {fullscreen ? (
+                    <IconArrowsMinimize size={16} />
+                  ) : (
+                    <IconArrowsMaximize size={16} />
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
@@ -337,7 +362,7 @@ export function CalendarPanel() {
                                   e.stopPropagation();
                                   openEditModal(item);
                                 }}
-                                className={`relative z-10 mb-0.5 h-[18px] cursor-pointer truncate bg-sky-500/90 px-1.5 text-[10px] leading-[18px] text-white transition hover:bg-sky-400 ${
+                                className={`relative z-10 mb-0.5 h-[18px] cursor-pointer truncate px-1.5 text-[10px] leading-[18px] text-white transition ${GetEventBarClasses(item.color)} ${
                                   position === "start"
                                     ? "mr-[-4px] rounded-l-md"
                                     : position === "end"
@@ -357,10 +382,10 @@ export function CalendarPanel() {
                                   e.stopPropagation();
                                   openEditModal(item);
                                 }}
-                                className={`cursor-pointer truncate rounded px-1 py-0.5 text-[10px] hover:ring-1 hover:ring-white/20 ${
-                                  item.type === "task"
-                                    ? "bg-blue-500/15 text-blue-300"
-                                    : "bg-white/[0.08] text-zinc-300"
+                                className={`cursor-pointer truncate rounded border px-1 py-0.5 text-[10px] hover:ring-1 hover:ring-white/20 ${GetEventChipClasses(item.color)} ${
+                                  item.type === "task" && !item.color
+                                    ? "bg-blue-500/15 text-blue-300 border-blue-500/25"
+                                    : ""
                                 } ${item.completed ? "line-through opacity-50" : ""}`}
                               >
                                 {item.title}

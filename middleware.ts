@@ -3,11 +3,17 @@ import { VerifySessionToken } from "@/lib/session-token";
 
 const PublicPaths = ["/login", "/api/auth/login"];
 
+function IsPublicCalendarFeed(pathname: string): boolean {
+  if (pathname === "/api/calendar/feed") return false;
+  return /^\/api\/calendar\/[^/]+$/.test(pathname);
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
     PublicPaths.some((path) => pathname === path) ||
+    IsPublicCalendarFeed(pathname) ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

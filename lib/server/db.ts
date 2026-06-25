@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 
-const SchemaVersion = 1;
+const SchemaVersion = 2;
 
 let DatabaseInstance: Database.Database | null = null;
 
@@ -46,7 +46,8 @@ function RunMigrations(database: Database.Database): void {
       end_time TEXT,
       type TEXT NOT NULL,
       completed INTEGER NOT NULL DEFAULT 0,
-      recurrence TEXT
+      recurrence TEXT,
+      color TEXT
     );
 
     CREATE TABLE IF NOT EXISTS habits (
@@ -92,12 +93,36 @@ function RunMigrations(database: Database.Database): void {
     .prepare("SELECT value FROM meta WHERE key = 'schema_version'")
     .get() as { value: string } | undefined;
 
+  const currentVersion = versionRow ? parseInt(versionRow.value, 10) : 0;
+
   if (!versionRow) {
     database
       .prepare(
         "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', ?)",
       )
       .run(String(SchemaVersion));
+  } else if (currentVersion < SchemaVersion) {
+    RunSchemaUpgrades(database, currentVersion);
+    database
+      .prepare(
+        "INSERT OR REPLACE INTO meta (key, value) VALUES ('schema_version', ?)",
+      )
+      .run(String(SchemaVersion));
+  }
+}
+
+function RunSchemaUpgrades(
+  database: Database.Database,
+  fromVersion: number,
+): void {
+  if (fromVersion < 2) {
+    const eventColumns = database
+      .prepare("PRAGMA table_info(events)")
+      .all() as { name: string }[];
+
+    if (!eventColumns.some((column) => column.name === "color")) {
+      database.exec("ALTER TABLE events ADD COLUMN color TEXT");
+    }
   }
 }
 

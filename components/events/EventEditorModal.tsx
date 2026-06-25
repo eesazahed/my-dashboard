@@ -10,6 +10,12 @@ import { Input } from "@/components/ui/Input";
 import { MilitaryTimeInput } from "@/components/ui/MilitaryTimeInput";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
+import {
+  DefaultLinkColor,
+  GetLinkColorSwatchClasses,
+  LinkColorOptions,
+  type LinkColorId,
+} from "@/lib/link-colors";
 
 export type EventFormState = {
   title: string;
@@ -22,6 +28,7 @@ export type EventFormState = {
   recurrenceFrequency: "daily" | "weekly";
   recurrenceWeekdays: number[];
   recurrenceWeeks: string;
+  color: LinkColorId;
 };
 
 type EventEditorModalProps = {
@@ -57,6 +64,7 @@ function BuildInitialForm(
           editingEvent.recurrence.until,
         )
       : "4",
+    color: (editingEvent?.color as LinkColorId) ?? DefaultLinkColor,
   };
 }
 
@@ -187,6 +195,28 @@ function EventEditorForm({
             <option value="event">Event</option>
             <option value="task">Task</option>
           </Select>
+
+          <fieldset>
+            <legend className="mb-2 block text-xs font-medium text-zinc-400">
+              Color
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {LinkColorOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  title={option.label}
+                  onClick={() => SetForm({ ...Form, color: option.id })}
+                  className={`size-8 rounded-lg border transition ${GetLinkColorSwatchClasses(option.id)} ${
+                    Form.color === option.id
+                      ? "border-white/40 ring-2 ring-white/20"
+                      : "border-transparent opacity-80 hover:opacity-100"
+                  }`}
+                  aria-label={option.label}
+                />
+              ))}
+            </div>
+          </fieldset>
 
           <div className="flex gap-3">
             <Button type="submit" className="flex-1">

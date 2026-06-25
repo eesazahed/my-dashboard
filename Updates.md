@@ -1,5 +1,11 @@
 # Updates
 
+## 2026-06-23 (event colors, calendar fullscreen, iCal feed)
+
+- Calendar events/tasks: color picker in editor (same palette as quick links); colors on month/week/day views and agenda dots
+- Calendar fullscreen button — other widgets slide out; header/thought dump collapse; toggle back with minimize
+- Public iCal subscription URL in Settings (secret token) — add to Google Calendar via “From URL”; `/api/calendar/[token]`
+
 ## 2026-06-16 (Nest update.sh)
 
 - `update.sh` — pull, install, build, restart systemd; backs up `.db` before each deploy

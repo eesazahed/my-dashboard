@@ -134,6 +134,7 @@ export function CreateEventFromForm(
     type: form.type,
     completed: form.type === "task" ? false : undefined,
     recurrence,
+    color: form.color,
     ...timing,
   };
 }
@@ -154,6 +155,7 @@ export function UpdateEventFromForm(
     endDate: timing.endDate,
     endTime: timing.endTime,
     recurrence,
+    color: form.color,
     completed: form.type === "task" ? (event.completed ?? false) : undefined,
   };
 }

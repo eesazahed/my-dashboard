@@ -22,6 +22,7 @@ type EventRow = {
   type: string;
   completed: number;
   recurrence: string | null;
+  color: string | null;
 };
 
 export type HabitWithStreak = Habit & { streak: number };
@@ -47,6 +48,7 @@ function RowToEvent(row: EventRow): DashboardEvent {
     recurrence: row.recurrence
       ? (JSON.parse(row.recurrence) as EventRecurrence)
       : undefined,
+    color: row.color ?? undefined,
   };
 }
 
@@ -61,6 +63,7 @@ function EventToRow(event: DashboardEvent) {
     type: event.type,
     completed: event.completed ? 1 : 0,
     recurrence: event.recurrence ? JSON.stringify(event.recurrence) : null,
+    color: event.color ?? null,
   };
 }
 
@@ -91,9 +94,9 @@ export function SeedDatabaseIfEmpty(): void {
 
   const insertEvent = database.prepare(
     `INSERT INTO events (
-      id, title, date, time, end_date, end_time, type, completed, recurrence
+      id, title, date, time, end_date, end_time, type, completed, recurrence, color
     ) VALUES (
-      @id, @title, @date, @time, @end_date, @end_time, @type, @completed, @recurrence
+      @id, @title, @date, @time, @end_date, @end_time, @type, @completed, @recurrence, @color
     )`,
   );
 
@@ -365,7 +368,7 @@ export function ReadBaseEventsForRange(
   const database = GetDb();
   const rows = database
     .prepare(
-      `SELECT id, title, date, time, end_date, end_time, type, completed, recurrence
+      `SELECT id, title, date, time, end_date, end_time, type, completed, recurrence, color
        FROM events
        WHERE (
          recurrence IS NULL
@@ -398,9 +401,9 @@ export function InsertEvent(event: DashboardEvent): void {
   database
     .prepare(
       `INSERT INTO events (
-        id, title, date, time, end_date, end_time, type, completed, recurrence
+        id, title, date, time, end_date, end_time, type, completed, recurrence, color
       ) VALUES (
-        @id, @title, @date, @time, @end_date, @end_time, @type, @completed, @recurrence
+        @id, @title, @date, @time, @end_date, @end_time, @type, @completed, @recurrence, @color
       )`,
     )
     .run(EventToRow(event));
@@ -418,7 +421,8 @@ export function UpdateEvent(event: DashboardEvent): void {
         end_time = @end_time,
         type = @type,
         completed = @completed,
-        recurrence = @recurrence
+        recurrence = @recurrence,
+        color = @color
       WHERE id = @id`,
     )
     .run(EventToRow(event));
@@ -453,4 +457,56 @@ export function SyncEvents(
       DeleteEvent(id);
     }
   }
+}
+
+const CalendarFeedTokenKey = "calendar_feed_token";
+
+function GenerateCalendarFeedToken(): string {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
+export function GetCalendarFeedToken(): string {
+  const database = GetDb();
+  const row = database
+    .prepare("SELECT value FROM meta WHERE key = ?")
+    .get(CalendarFeedTokenKey) as { value: string } | undefined;
+
+  if (row?.value) return row.value;
+
+  const token = GenerateCalendarFeedToken();
+  database
+    .prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)")
+    .run(CalendarFeedTokenKey, token);
+
+  return token;
+}
+
+export function RegenerateCalendarFeedToken(): string {
+  const database = GetDb();
+  const token = GenerateCalendarFeedToken();
+  database
+    .prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)")
+    .run(CalendarFeedTokenKey, token);
+
+  return token;
+}
+
+export function VerifyCalendarFeedToken(token: string): boolean {
+  if (!token.trim()) return false;
+  const stored = GetCalendarFeedToken();
+  return token === stored;
+}
+
+export function ReadEventsForCalendarFeed(): DashboardEvent[] {
+  const database = GetDb();
+  const rows = database
+    .prepare(
+      `SELECT id, title, date, time, end_date, end_time, type, completed, recurrence, color
+       FROM events
+       WHERE type = 'event'
+       ORDER BY date, time`,
+    )
+    .all() as EventRow[];
+
+  return rows.map(RowToEvent);
 }

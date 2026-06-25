@@ -14,6 +14,7 @@ export type DashboardEvent = {
   type: "event" | "task";
   completed?: boolean;
   recurrence?: EventRecurrence;
+  color?: string;
 };
 
 export type Habit = {
