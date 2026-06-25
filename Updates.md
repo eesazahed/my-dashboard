@@ -1,5 +1,9 @@
 # Updates
 
+## 2026-06-25 (event/task delete in editor)
+
+- Edit modal: trash icon in header instantly deletes events and tasks (not only events in advanced options)
+
 ## 2026-06-23 (calendar new tab + feed URL fix)
 
 - Replaced fullscreen calendar with “open in new tab” (`/calendar` page)

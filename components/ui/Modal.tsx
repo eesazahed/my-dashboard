@@ -9,9 +9,17 @@ type ModalProps = {
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  headerActions?: ReactNode;
 };
 
-export function Modal({ open, title, onClose, children, wide = false }: ModalProps) {
+export function Modal({
+  open,
+  title,
+  onClose,
+  children,
+  wide = false,
+  headerActions,
+}: ModalProps) {
   useEffect(() => {
     if (!open) return;
 
@@ -45,14 +53,17 @@ export function Modal({ open, title, onClose, children, wide = false }: ModalPro
       >
         <div className="mb-5 flex items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-zinc-50">{title}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
-            aria-label="Close"
-          >
-            <IconX size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            {headerActions}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close"
+            >
+              <IconX size={18} />
+            </button>
+          </div>
         </div>
         {children}
       </div>

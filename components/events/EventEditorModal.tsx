@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IconTrash } from "@tabler/icons-react";
 import type { DashboardEvent } from "@/lib/types";
 import { InferRecurrenceWeeks } from "@/lib/event-utils";
 import { WeekdayLabels } from "@/lib/recurrence-utils";
@@ -83,6 +84,13 @@ export function EventEditorModal({
     if (!open) SetShowAdvanced(false);
   }, [open]);
 
+  const handleDelete = () => {
+    if (!editingEvent || !onDelete) return;
+    onDelete(editingEvent.id);
+    SetShowAdvanced(false);
+    onClose();
+  };
+
   return (
     <Modal
       open={open}
@@ -92,6 +100,18 @@ export function EventEditorModal({
         SetShowAdvanced(false);
         onClose();
       }}
+      headerActions={
+        isEditing && onDelete ? (
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="rounded-lg p-1.5 text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+            aria-label="Delete"
+          >
+            <IconTrash size={18} />
+          </button>
+        ) : undefined
+      }
     >
       <EventEditorForm
         key={editingEvent?.id ?? `new-${defaultDate}`}
@@ -104,7 +124,6 @@ export function EventEditorModal({
           onClose();
         }}
         onSave={onSave}
-        onDelete={onDelete}
       />
     </Modal>
   );
@@ -117,7 +136,6 @@ function EventEditorForm({
   setShowAdvanced,
   onClose,
   onSave,
-  onDelete,
 }: {
   editingEvent: DashboardEvent | null;
   defaultDate: string;
@@ -125,7 +143,6 @@ function EventEditorForm({
   setShowAdvanced: (value: boolean) => void;
   onClose: () => void;
   onSave: (form: EventFormState, editingId: string | null) => void;
-  onDelete?: (id: string) => void;
 }) {
   const [Form, SetForm] = useState<EventFormState>(() =>
     BuildInitialForm(editingEvent, defaultDate),
@@ -345,20 +362,6 @@ function EventEditorForm({
                   </div>
                 )}
               </fieldset>
-
-              {editingEvent && onDelete && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full text-red-400 hover:text-red-300"
-                  onClick={() => {
-                    onDelete(editingEvent.id);
-                    onClose();
-                  }}
-                >
-                  Delete calendar item
-                </Button>
-              )}
             </div>
           )}
         </div>
