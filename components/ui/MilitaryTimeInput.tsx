@@ -33,8 +33,7 @@ export function MilitaryTimeInput({
       <Input
         ref={InputRef}
         label={label}
-        inputMode="numeric"
-        placeholder="15:00"
+        placeholder="7:30"
         autoComplete="off"
         maxLength={5}
         value={value}

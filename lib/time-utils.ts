@@ -46,8 +46,32 @@ export function FormatMilitaryTime(time: string): string {
 export const formatMilitaryTime = FormatMilitaryTime;
 
 export function NormalizeMilitaryTimeDraft(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 4);
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+
+  if (trimmed.includes(":")) {
+    const colonIndex = trimmed.indexOf(":");
+    const hours = trimmed.slice(0, colonIndex).replace(/\D/g, "").slice(0, 2);
+    const minutes = trimmed.slice(colonIndex + 1).replace(/\D/g, "").slice(0, 2);
+
+    if (trimmed.endsWith(":")) {
+      return `${hours}:`;
+    }
+
+    return minutes.length > 0 ? `${hours}:${minutes}` : hours;
+  }
+
+  const digits = trimmed.replace(/\D/g, "").slice(0, 4);
   if (digits.length <= 2) return digits;
+
+  if (digits.length === 3) {
+    const firstTwo = parseInt(digits.slice(0, 2), 10);
+    if (!Number.isNaN(firstTwo) && firstTwo <= 23) {
+      return `${digits.slice(0, 2)}:${digits[2]}`;
+    }
+    return `${digits[0]}:${digits.slice(1)}`;
+  }
+
   return `${digits.slice(0, 2)}:${digits.slice(2)}`;
 }
 

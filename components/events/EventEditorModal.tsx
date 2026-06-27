@@ -36,6 +36,7 @@ type EventEditorModalProps = {
   open: boolean;
   editingEvent: DashboardEvent | null;
   defaultDate: string;
+  defaultTime?: string;
   onClose: () => void;
   onSave: (form: EventFormState, editingId: string | null) => void;
   onDelete?: (id: string) => void;
@@ -44,6 +45,7 @@ type EventEditorModalProps = {
 function BuildInitialForm(
   editingEvent: DashboardEvent | null,
   defaultDate: string,
+  defaultTime = "",
 ): EventFormState {
   const startWeekday = parseIsoDate(
     editingEvent?.date ?? defaultDate,
@@ -52,7 +54,7 @@ function BuildInitialForm(
   return {
     title: editingEvent?.title ?? "",
     date: editingEvent?.date ?? defaultDate,
-    time: editingEvent?.time ?? "",
+    time: editingEvent?.time ?? defaultTime,
     endDate: editingEvent?.endDate ?? "",
     endTime: editingEvent?.endTime ?? "",
     type: editingEvent?.type ?? "event",
@@ -73,6 +75,7 @@ export function EventEditorModal({
   open,
   editingEvent,
   defaultDate,
+  defaultTime = "",
   onClose,
   onSave,
   onDelete,
@@ -114,9 +117,10 @@ export function EventEditorModal({
       }
     >
       <EventEditorForm
-        key={editingEvent?.id ?? `new-${defaultDate}`}
+        key={editingEvent?.id ?? `new-${defaultDate}-${defaultTime}`}
         editingEvent={editingEvent}
         defaultDate={defaultDate}
+        defaultTime={defaultTime}
         showAdvanced={ShowAdvanced}
         setShowAdvanced={SetShowAdvanced}
         onClose={() => {
@@ -132,6 +136,7 @@ export function EventEditorModal({
 function EventEditorForm({
   editingEvent,
   defaultDate,
+  defaultTime = "",
   showAdvanced,
   setShowAdvanced,
   onClose,
@@ -139,13 +144,14 @@ function EventEditorForm({
 }: {
   editingEvent: DashboardEvent | null;
   defaultDate: string;
+  defaultTime?: string;
   showAdvanced: boolean;
   setShowAdvanced: (value: boolean) => void;
   onClose: () => void;
   onSave: (form: EventFormState, editingId: string | null) => void;
 }) {
   const [Form, SetForm] = useState<EventFormState>(() =>
-    BuildInitialForm(editingEvent, defaultDate),
+    BuildInitialForm(editingEvent, defaultDate, defaultTime),
   );
 
   const handleSubmit = (event: React.FormEvent) => {

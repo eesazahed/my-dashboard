@@ -1,5 +1,19 @@
 # Updates
 
+## 2026-06-26 (day view time grid)
+
+- Day view: scrollable hourly grid; timed events span correct slots (e.g. 12pm–6pm = 6 hours)
+- Week/month styling reverted; drag-and-drop between cells kept
+
+## 2026-06-26 (calendar drag-drop + Google day style)
+
+- Month/week: drag events between day cells with snap highlight; multi-day spans move together
+- Day numbers styled like Google Calendar (circle for today, `S M T W T F S` month headers)
+
+## 2026-06-26 (time input manual typing)
+
+- Military time input respects typed values like `7:30` instead of reformatting to `73:0`
+
 ## 2026-06-25 (cross-device sync fixes)
 
 - Fixed silent bootstrap failure showing empty habits/links while calendar still loaded events

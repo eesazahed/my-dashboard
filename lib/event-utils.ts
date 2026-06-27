@@ -181,3 +181,48 @@ export function InferRecurrenceWeeks(
     Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   return String(Math.max(1, Math.ceil(days / 7)));
 }
+
+export function GetDayOffset(fromIso: string, toIso: string): number {
+  const from = parseIsoDate(fromIso);
+  const to = parseIsoDate(toIso);
+  return Math.round((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+export function ShiftEventDates(
+  event: DashboardEvent,
+  dayOffset: number,
+): DashboardEvent {
+  if (dayOffset === 0) return event;
+
+  const shiftIso = (iso: string) => {
+    const date = parseIsoDate(iso);
+    date.setDate(date.getDate() + dayOffset);
+    return formatIsoDate(date);
+  };
+
+  const next: DashboardEvent = {
+    ...event,
+    date: shiftIso(event.date),
+  };
+
+  if (event.endDate) {
+    next.endDate = shiftIso(event.endDate);
+  }
+
+  if (event.recurrence?.until) {
+    next.recurrence = {
+      ...event.recurrence,
+      until: shiftIso(event.recurrence.until),
+    };
+  }
+
+  return next;
+}
+
+export function MoveEventOccurrenceToDate(
+  event: DashboardEvent,
+  occurrenceIso: string,
+  targetIso: string,
+): DashboardEvent {
+  return ShiftEventDates(event, GetDayOffset(occurrenceIso, targetIso));
+}

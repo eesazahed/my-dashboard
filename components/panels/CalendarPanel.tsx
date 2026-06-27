@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   IconChevronLeft,
   IconChevronRight,
   IconExternalLink,
   IconPlus,
 } from "@tabler/icons-react";
+import { DayScheduleView } from "@/components/calendar/DayScheduleView";
 import {
   EventEditorModal,
   type EventFormState,
 } from "@/components/events/EventEditorModal";
+import {
+  CalendarDragMime,
+  DecodeCalendarDragPayload,
+  EncodeCalendarDragPayload,
+  type CalendarDragPayload,
+} from "@/lib/calendar-drag";
 import { useDashboard } from "@/context/DashboardContext";
 import { ExpandAllEventOccurrences, ParseBaseEventId } from "@/lib/recurrence-utils";
 import {
@@ -18,6 +25,7 @@ import {
   GetEventSpanPosition,
   GetMultiDayLaneMap,
   IsMultiDayEvent,
+  MoveEventOccurrenceToDate,
   UpdateEventFromForm,
 } from "@/lib/event-utils";
 import {
@@ -63,6 +71,9 @@ export function CalendarPanel() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<DashboardEvent | null>(null);
   const [activeEventId, setActiveEventId] = useState<string | null>(null);
+  const [dragOverIso, setDragOverIso] = useState<string | null>(null);
+  const [createDefaultTime, setCreateDefaultTime] = useState("");
+  const didDragRef = useRef(false);
 
   const todayIso = getTodayIso();
   const activeDate = selectedDate || todayIso;
@@ -89,9 +100,10 @@ export function CalendarPanel() {
     void fetchEventsForRange(range.from, range.to);
   }, [view, viewDate, fetchEventsForRange]);
 
-  const openCreateModal = (date: string) => {
+  const openCreateModal = (date: string, time = "") => {
     setSelectedDate(date);
     setEditingEvent(null);
+    setCreateDefaultTime(time);
     setModalOpen(true);
   };
 
@@ -162,6 +174,69 @@ export function CalendarPanel() {
     setEditingEvent(null);
   };
 
+  const moveEventToDate = (
+    payload: CalendarDragPayload,
+    targetIso: string,
+  ) => {
+    if (payload.fromIso === targetIso) return;
+
+    const baseId = ParseBaseEventId(payload.eventId);
+    setEvents((prev) =>
+      prev.map((event) =>
+        event.id === baseId
+          ? MoveEventOccurrenceToDate(event, payload.fromIso, targetIso)
+          : event,
+      ),
+    );
+    setSelectedDate(targetIso);
+    showToast("Moved ✓");
+  };
+
+  const handleCalendarDrop = (
+    event: React.DragEvent<HTMLElement>,
+    targetIso: string,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOverIso(null);
+
+    const payload = DecodeCalendarDragPayload(event.dataTransfer);
+    if (!payload) return;
+
+    moveEventToDate(payload, targetIso);
+  };
+
+  const getCellDropHandlers = (iso: string) => ({
+    onDragOver: (event: React.DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      setDragOverIso(iso);
+    },
+    onDragLeave: () => {
+      setDragOverIso((current) => (current === iso ? null : current));
+    },
+    onDrop: (event: React.DragEvent<HTMLElement>) => {
+      handleCalendarDrop(event, iso);
+    },
+  });
+
+  const beginEventDrag = (
+    event: React.DragEvent<HTMLElement>,
+    payload: CalendarDragPayload,
+  ) => {
+    event.stopPropagation();
+    didDragRef.current = true;
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData(
+      CalendarDragMime,
+      EncodeCalendarDragPayload(payload),
+    );
+    event.dataTransfer.setData(
+      "text/plain",
+      EncodeCalendarDragPayload(payload),
+    );
+  };
+
   const title =
     view === "month"
       ? formatMonthTitle(viewDate)
@@ -173,19 +248,38 @@ export function CalendarPanel() {
   const weekCells = getWeekCells(formatIsoDate(viewDate), todayIso);
   const dayEvents = filterEventsByDate(events, displayDate);
 
-  const renderEventCard = (item: DashboardEvent, compact = false) => {
+  const renderEventCard = (
+    item: DashboardEvent,
+    compact = false,
+    fromIso?: string,
+  ) => {
     const isActive = activeEventId === item.id;
+    const canDrag = Boolean(fromIso);
 
     return (
       <div
         key={item.id}
         role="button"
         tabIndex={0}
+        draggable={canDrag}
+        onDragStart={(event) => {
+          if (!fromIso) return;
+          beginEventDrag(event, { eventId: item.id, fromIso });
+        }}
+        onDragEnd={() => {
+          window.setTimeout(() => {
+            didDragRef.current = false;
+          }, 0);
+        }}
         onClick={(e) => {
           e.stopPropagation();
+          if (didDragRef.current) return;
           setActiveEventId(isActive ? null : item.id);
         }}
-        onDoubleClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (!didDragRef.current) openEditModal(item);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.stopPropagation();
@@ -196,7 +290,9 @@ export function CalendarPanel() {
           compact ? "px-2 py-1.5" : "px-4 py-3"
         } ${GetEventCardClasses(item.color, item.type)} ${
           item.completed ? "opacity-50 line-through" : ""
-        } ${isActive ? "ring-1 ring-white/20" : ""}`}
+        } ${isActive ? "ring-1 ring-white/20" : ""} ${
+          canDrag ? "cursor-grab active:cursor-grabbing" : ""
+        }`}
       >
         {FormatEventSchedule(item) ? (
           <p className="text-[10px] tabular-nums text-zinc-500">
@@ -289,7 +385,13 @@ export function CalendarPanel() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div
+            className={`min-h-0 flex-1 ${
+              view === "day"
+                ? "flex flex-col overflow-hidden"
+                : "overflow-y-auto"
+            }`}
+          >
             {view === "month" && (
               <div className="overflow-visible rounded-xl border border-white/[0.06]">
                 <div className="grid grid-cols-7 border-b border-white/[0.05] bg-white/[0.02]">
@@ -310,20 +412,28 @@ export function CalendarPanel() {
                       (item) => !IsMultiDayEvent(item),
                     );
                     const isSelected = cell.iso === activeDate;
+                    const isDropTarget = dragOverIso === cell.iso;
 
-                    const cellTint = isSelected
-                      ? "bg-emerald-500/18"
-                      : cell.isToday
-                        ? "bg-emerald-500/10"
-                        : "";
+                    const cellTint = isDropTarget
+                      ? "bg-sky-500/15 ring-2 ring-inset ring-sky-500/40"
+                      : isSelected
+                        ? "bg-emerald-500/18"
+                        : cell.isToday
+                          ? "bg-emerald-500/10"
+                          : "";
 
                     return (
-                      <button
+                      <div
                         key={cell.iso}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => handleSelectDate(cell.iso)}
                         onDoubleClick={() => openCreateModal(cell.iso)}
-                        className={`calendar-cell flex min-h-[92px] flex-col items-start overflow-visible border-b border-r border-white/[0.04] pt-1.5 pl-1.5 pr-0 pb-1 text-left ${cellTint}`}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSelectDate(cell.iso);
+                        }}
+                        {...getCellDropHandlers(cell.iso)}
+                        className={`calendar-cell flex min-h-[92px] cursor-pointer flex-col items-start overflow-visible border-b border-r border-white/[0.04] pt-1.5 pl-1.5 pr-0 pb-1 text-left transition-colors ${cellTint}`}
                       >
                         <span
                           className={`text-xs font-medium leading-none ${
@@ -342,12 +452,25 @@ export function CalendarPanel() {
                             return (
                               <div
                                 key={item.id}
+                                draggable
                                 style={{ marginTop: lane > 0 ? lane * 20 : 0 }}
+                                onDragStart={(event) =>
+                                  beginEventDrag(event, {
+                                    eventId: item.id,
+                                    fromIso: cell.iso,
+                                  })
+                                }
+                                onDragEnd={() => {
+                                  window.setTimeout(() => {
+                                    didDragRef.current = false;
+                                  }, 0);
+                                }}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  if (didDragRef.current) return;
                                   openEditModal(item);
                                 }}
-                                className={`relative z-10 mb-0.5 h-[18px] cursor-pointer truncate px-1.5 text-[10px] leading-[18px] text-white transition ${GetEventBarClasses(item.color)} ${
+                                className={`relative z-10 mb-0.5 h-[18px] cursor-grab truncate px-1.5 text-[10px] leading-[18px] text-white transition active:cursor-grabbing ${GetEventBarClasses(item.color)} ${
                                   position === "start"
                                     ? "mr-[-4px] rounded-l-md"
                                     : position === "end"
@@ -363,11 +486,24 @@ export function CalendarPanel() {
                             {singleDayEvents.slice(0, 2).map((item) => (
                               <div
                                 key={item.id}
+                                draggable
+                                onDragStart={(event) =>
+                                  beginEventDrag(event, {
+                                    eventId: item.id,
+                                    fromIso: cell.iso,
+                                  })
+                                }
+                                onDragEnd={() => {
+                                  window.setTimeout(() => {
+                                    didDragRef.current = false;
+                                  }, 0);
+                                }}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  if (didDragRef.current) return;
                                   openEditModal(item);
                                 }}
-                                className={`cursor-pointer truncate rounded border px-1 py-0.5 text-[10px] hover:ring-1 hover:ring-white/20 ${GetEventChipClasses(item.color)} ${
+                                className={`cursor-grab truncate rounded border px-1 py-0.5 text-[10px] hover:ring-1 hover:ring-white/20 active:cursor-grabbing ${GetEventChipClasses(item.color)} ${
                                   item.type === "task" && !item.color
                                     ? "bg-blue-500/15 text-blue-300 border-blue-500/25"
                                     : ""
@@ -383,7 +519,7 @@ export function CalendarPanel() {
                             )}
                           </div>
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -395,6 +531,7 @@ export function CalendarPanel() {
                 {weekCells.map((cell) => {
                   const dayEventsList = eventsByDate[cell.iso] ?? [];
                   const isSelected = cell.iso === activeDate;
+                  const isDropTarget = dragOverIso === cell.iso;
 
                   return (
                     <div
@@ -406,10 +543,13 @@ export function CalendarPanel() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleSelectDate(cell.iso);
                       }}
-                      className={`flex min-h-[480px] cursor-pointer flex-col rounded-xl border p-3 text-left transition ${
-                        isSelected
-                          ? "border-white/20 bg-white/[0.06]"
-                          : "border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]"
+                      {...getCellDropHandlers(cell.iso)}
+                      className={`flex min-h-[480px] cursor-pointer flex-col rounded-xl border p-3 text-left transition-colors ${
+                        isDropTarget
+                          ? "border-sky-500/50 bg-sky-500/10 ring-2 ring-inset ring-sky-500/30"
+                          : isSelected
+                            ? "border-white/20 bg-white/[0.06]"
+                            : "border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]"
                       }`}
                     >
                       <div className="shrink-0 border-b border-white/[0.05] pb-2">
@@ -432,7 +572,9 @@ export function CalendarPanel() {
                             No events
                           </p>
                         ) : (
-                          dayEventsList.map((item) => renderEventCard(item, true))
+                          dayEventsList.map((item) =>
+                            renderEventCard(item, true, cell.iso),
+                          )
                         )}
                       </div>
                     </div>
@@ -442,19 +584,13 @@ export function CalendarPanel() {
             )}
 
             {view === "day" && (
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                {dayEvents.length === 0 ? (
-                  <p className="py-12 text-center text-sm text-zinc-500">
-                    Nothing scheduled. Click + to add.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {dayEvents.map((item) => (
-                      <li key={item.id}>{renderEventCard(item)}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <DayScheduleView
+                displayDate={displayDate}
+                todayIso={todayIso}
+                events={dayEvents}
+                onOpenEvent={openEditModal}
+                onCreateAtTime={(date, time) => openCreateModal(date, time)}
+              />
             )}
           </div>
         </div>
@@ -464,9 +600,11 @@ export function CalendarPanel() {
         open={modalOpen}
         editingEvent={editingEvent}
         defaultDate={displayDate}
+        defaultTime={createDefaultTime}
         onClose={() => {
           setModalOpen(false);
           setEditingEvent(null);
+          setCreateDefaultTime("");
         }}
         onSave={handleSave}
         onDelete={deleteEvent}
