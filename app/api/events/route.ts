@@ -17,7 +17,15 @@ export async function GET(request: Request) {
 
   try {
     const events = ReadBaseEventsForRange(from, to);
-    return NextResponse.json({ events });
+    return NextResponse.json(
+      { events },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        },
+      },
+    );
   } catch (error) {
     console.error("Events fetch failed:", error);
     return NextResponse.json(

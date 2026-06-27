@@ -6,7 +6,12 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const payload = ReadBootstrap();
-    return NextResponse.json(payload);
+    return NextResponse.json(payload, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        Pragma: "no-cache",
+      },
+    });
   } catch (error) {
     console.error("Bootstrap failed:", error);
     return NextResponse.json(

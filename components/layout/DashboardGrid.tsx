@@ -8,10 +8,21 @@ import { HabitsPanel } from "@/components/panels/HabitsPanel";
 import { PortfolioPanel } from "@/components/panels/PortfolioPanel";
 import { QuickLinksPanel } from "@/components/panels/QuickLinksPanel";
 import { EditableWidgetPanel } from "@/components/panels/EditableWidgetPanel";
+import { Button } from "@/components/ui/Button";
 import { useDashboard } from "@/context/DashboardContext";
 
 export function DashboardGrid() {
-  const { ready } = useDashboard();
+  const { ready, loadError, retryLoad } = useDashboard();
+
+  if (loadError) {
+    return (
+      <main className="mx-auto flex min-h-[60vh] max-w-[1400px] flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="text-zinc-300">Could not load your dashboard data.</p>
+        <p className="max-w-md text-sm text-zinc-500">{loadError}</p>
+        <Button onClick={retryLoad}>Try again</Button>
+      </main>
+    );
+  }
 
   if (!ready) {
     return (

@@ -19,6 +19,12 @@ import {
   RangeKey,
 } from "@/lib/event-range";
 import {
+  ClearLegacyLocalStorage,
+  MergeSettings,
+  ReadLegacyLocalStorage,
+  ShouldMigrateLegacyData,
+} from "@/lib/legacy-local-storage";
+import {
   DefaultSettings,
   type DashboardEvent,
   type Habit,
@@ -37,6 +43,8 @@ type BootstrapResponse = {
 
 type DashboardContextValue = {
   ready: boolean;
+  loadError: string | null;
+  retryLoad: () => void;
   selectedDate: string;
   setSelectedDate: (date: string) => void;
   events: DashboardEvent[];
@@ -67,8 +75,19 @@ type DashboardContextValue = {
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
 
+function ToPersistableHabits(habits: Habit[]) {
+  return habits.map(({ id, name, frequency, target, log }) => ({
+    id,
+    name,
+    frequency,
+    target,
+    log,
+  }));
+}
+
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [events, setEventsState] = useState<DashboardEvent[]>([]);
   const [habits, setHabitsState] = useState<Habit[]>([]);
@@ -84,6 +103,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const eventsRef = useRef<DashboardEvent[]>([]);
   const loadedRangesRef = useRef<Set<string>>(new Set());
   const pendingRangeFetchesRef = useRef<Map<string, Promise<void>>>(new Map());
+  const persistReadyRef = useRef(false);
 
   useEffect(() => {
     eventsRef.current = events;
@@ -121,8 +141,59 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const migrateLegacyIfNeeded = useCallback(
+    async (bootstrap: BootstrapResponse): Promise<BootstrapResponse> => {
+      const legacy = ReadLegacyLocalStorage();
+      if (!legacy || !ShouldMigrateLegacyData(bootstrap, legacy)) {
+        return bootstrap;
+      }
+
+      if (legacy.settings) {
+        await ApiPut("/api/settings", {
+          settings: MergeSettings(bootstrap.settings, legacy.settings),
+        });
+      }
+
+      if (legacy.habits.length > 0) {
+        await ApiPut("/api/habits", {
+          habits: ToPersistableHabits(legacy.habits),
+        });
+      }
+
+      if (legacy.quickLinks.length > 0) {
+        await ApiPut("/api/quick-links", { quickLinks: legacy.quickLinks });
+      }
+
+      if (legacy.portfolio.length > 0) {
+        await ApiPut("/api/portfolio", { portfolio: legacy.portfolio });
+      }
+
+      if (legacy.thoughtDump != null && legacy.thoughtDump.trim()) {
+        await ApiPut("/api/thought-dump", { content: legacy.thoughtDump });
+      }
+
+      if (legacy.events.length > 0) {
+        await ApiPut("/api/events/sync", {
+          previous: [],
+          next: legacy.events,
+        });
+      }
+
+      ClearLegacyLocalStorage();
+      showToast("Imported saved browser data to server ✓");
+      return ApiGet<BootstrapResponse>("/api/bootstrap");
+    },
+    [showToast],
+  );
+
   const loadDashboard = useCallback(async () => {
-    const bootstrap = await ApiGet<BootstrapResponse>("/api/bootstrap");
+    persistReadyRef.current = false;
+    setLoadError(null);
+    setReady(false);
+
+    let bootstrap = await ApiGet<BootstrapResponse>("/api/bootstrap");
+    bootstrap = await migrateLegacyIfNeeded(bootstrap);
+
     setSettingsState(bootstrap.settings);
     setHabitsState(bootstrap.habits);
     setQuickLinksState(bootstrap.quickLinks);
@@ -134,8 +205,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setEventsState([]);
     await fetchEventsForRange(initialRange.from, initialRange.to);
     setSelectedDate(getTodayIso());
+    persistReadyRef.current = true;
     setReady(true);
-  }, [fetchEventsForRange]);
+  }, [fetchEventsForRange, migrateLegacyIfNeeded]);
 
   useEffect(() => {
     const onLoginPage =
@@ -147,8 +219,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    loadDashboard().catch(() => {
-      setReady(true);
+    loadDashboard().catch((error) => {
+      persistReadyRef.current = false;
+      setReady(false);
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Could not load dashboard from server",
+      );
     });
   }, [loadDashboard]);
 
@@ -158,9 +236,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     ) => {
       setEventsState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        void ApiPut("/api/events/sync", { previous: prev, next }).catch(() => {
-          showToast("Failed to save events");
-        });
+        if (persistReadyRef.current) {
+          void ApiPut("/api/events/sync", { previous: prev, next }).catch(() => {
+            showToast("Failed to save events");
+          });
+        }
         return next;
       });
     },
@@ -171,16 +251,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     (value: Habit[] | ((prev: Habit[]) => Habit[])) => {
       setHabitsState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        const persistable = next.map(({ id, name, frequency, target, log }) => ({
-          id,
-          name,
-          frequency,
-          target,
-          log,
-        }));
-        void ApiPut("/api/habits", { habits: persistable }).catch(() => {
-          showToast("Failed to save habits");
-        });
+        if (persistReadyRef.current) {
+          void ApiPut("/api/habits", {
+            habits: ToPersistableHabits(next),
+          }).catch(() => {
+            showToast("Failed to save habits");
+          });
+        }
         return next;
       });
     },
@@ -191,9 +268,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     (value: Settings | ((prev: Settings) => Settings)) => {
       setSettingsState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        void ApiPut("/api/settings", { settings: next }).catch(() => {
-          showToast("Failed to save settings");
-        });
+        if (persistReadyRef.current) {
+          void ApiPut("/api/settings", { settings: next }).catch(() => {
+            showToast("Failed to save settings");
+          });
+        }
         return next;
       });
     },
@@ -204,9 +283,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     (value: QuickLink[] | ((prev: QuickLink[]) => QuickLink[])) => {
       setQuickLinksState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        void ApiPut("/api/quick-links", { quickLinks: next }).catch(() => {
-          showToast("Failed to save quick links");
-        });
+        if (persistReadyRef.current) {
+          void ApiPut("/api/quick-links", { quickLinks: next }).catch(() => {
+            showToast("Failed to save quick links");
+          });
+        }
         return next;
       });
     },
@@ -221,9 +302,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     ) => {
       setPortfolioState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        void ApiPut("/api/portfolio", { portfolio: next }).catch(() => {
-          showToast("Failed to save portfolio");
-        });
+        if (persistReadyRef.current) {
+          void ApiPut("/api/portfolio", { portfolio: next }).catch(() => {
+            showToast("Failed to save portfolio");
+          });
+        }
         return next;
       });
     },
@@ -234,9 +317,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     (value: string | ((prev: string) => string)) => {
       setThoughtDumpState((prev) => {
         const next = typeof value === "function" ? value(prev) : value;
-        void ApiPut("/api/thought-dump", { content: next }).catch(() => {
-          showToast("Failed to save thought dump");
-        });
+        if (persistReadyRef.current) {
+          void ApiPut("/api/thought-dump", { content: next }).catch(() => {
+            showToast("Failed to save thought dump");
+          });
+        }
         return next;
       });
     },
@@ -244,13 +329,26 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   );
 
   const reloadDashboard = useCallback(async () => {
-    setReady(false);
     await loadDashboard();
+  }, [loadDashboard]);
+
+  const retryLoad = useCallback(() => {
+    loadDashboard().catch((error) => {
+      persistReadyRef.current = false;
+      setReady(false);
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Could not load dashboard from server",
+      );
+    });
   }, [loadDashboard]);
 
   const value = useMemo(
     () => ({
       ready,
+      loadError,
+      retryLoad,
       selectedDate,
       setSelectedDate,
       events,
@@ -272,6 +370,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     }),
     [
       ready,
+      loadError,
+      retryLoad,
       selectedDate,
       events,
       setEvents,

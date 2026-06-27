@@ -1,5 +1,10 @@
 # Updates
 
+## 2026-06-25 (cross-device sync fixes)
+
+- Fixed silent bootstrap failure showing empty habits/links while calendar still loaded events
+- Persist to server only after bootstrap succeeds; auto-import old `dashboard:*` localStorage keys to SQLite
+
 ## 2026-06-25 (timezone setting + iCal sync hints)
 
 - Settings → Advanced: timezone picker (default Central / America/Chicago) for header clock and iCal export

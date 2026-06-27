@@ -6,7 +6,22 @@ import { CalendarPanel } from "@/components/panels/CalendarPanel";
 import { useDashboard } from "@/context/DashboardContext";
 
 export default function CalendarPage() {
-  const { ready } = useDashboard();
+  const { ready, loadError, retryLoad } = useDashboard();
+
+  if (loadError) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="text-zinc-300">Could not load calendar data.</p>
+        <button
+          type="button"
+          onClick={retryLoad}
+          className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black"
+        >
+          Try again
+        </button>
+      </main>
+    );
+  }
 
   if (!ready) {
     return (
