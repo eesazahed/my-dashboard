@@ -11,12 +11,14 @@ import {
   LayoutTimedEventsForDay,
   SplitDayEvents,
 } from "@/lib/day-schedule";
+import { GetNowMinutesInTimezone } from "@/lib/timezones";
 import { GetEventBarClasses } from "@/lib/link-colors";
 import type { DashboardEvent } from "@/lib/types";
 
 type DayScheduleViewProps = {
   displayDate: string;
   todayIso: string;
+  clockTimezone: string;
   events: DashboardEvent[];
   onOpenEvent: (event: DashboardEvent) => void;
   onCreateAtTime: (date: string, time: string) => void;
@@ -25,6 +27,7 @@ type DayScheduleViewProps = {
 export function DayScheduleView({
   displayDate,
   todayIso,
+  clockTimezone,
   events,
   onOpenEvent,
   onCreateAtTime,
@@ -40,10 +43,10 @@ export function DayScheduleView({
   );
   const gridHeightPx = DayHours * DayHourHeightPx;
   const isToday = displayDate === todayIso;
-  const nowMinutes = useMemo(() => {
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-  }, []);
+  const nowMinutes = useMemo(
+    () => GetNowMinutesInTimezone(clockTimezone),
+    [clockTimezone],
+  );
 
   useEffect(() => {
     const container = scrollRef.current;

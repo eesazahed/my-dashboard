@@ -1,5 +1,16 @@
 # Updates
 
+## 2026-06-23 (event timezone display)
+
+- Events stored in Central (default 17:00 CST); Settings timezone converts display (17:00 CST → 18:00 EST)
+- Calendar, agenda, day grid, and editor show converted times; save converts back to Central for SQLite
+- Drag-and-drop moves use display dates; iCal feed still exports Central (TZID) for correct subscriber conversion
+
+## 2026-06-26 (event wall-clock timezone)
+
+- Events stay at stored wall-clock times (Central); settings timezone only changes header clock
+- iCal export always uses Central for event times, not the display timezone setting
+
 ## 2026-06-26 (calendar double-click)
 
 - Double-click event → edit modal; double-click empty cell → new event modal (month, week, day)

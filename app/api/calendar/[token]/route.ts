@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { BuildIcsCalendar } from "@/lib/ical";
+import { GetEventsTimezone } from "@/lib/timezones";
 import {
   ReadEventsForCalendarFeed,
   ReadSettings,
@@ -27,7 +28,7 @@ export async function GET(request: Request, context: RouteContext) {
     events,
     origin,
     calendarName,
-    settings.timezone,
+    GetEventsTimezone(),
   );
 
   return new Response(body, {

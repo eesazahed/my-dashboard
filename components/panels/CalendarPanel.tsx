@@ -25,7 +25,6 @@ import {
   GetEventSpanPosition,
   GetMultiDayLaneMap,
   IsMultiDayEvent,
-  MoveEventOccurrenceToDate,
   UpdateEventFromForm,
 } from "@/lib/event-utils";
 import {
@@ -53,6 +52,13 @@ import {
   GetEventCardClasses,
   GetEventChipClasses,
 } from "@/lib/link-colors";
+import {
+  ConvertEventFormTimesToStorage,
+  GetDefaultEventTimeForDisplay,
+  MapEventToDisplayTimezone,
+  MoveStoredEventByDisplayDates,
+} from "@/lib/timezone-convert";
+import { ResolveTimezone } from "@/lib/timezones";
 import type { DashboardEvent } from "@/lib/types";
 import { ItemActionBar } from "@/components/ui/ItemActionBar";
 import { Panel } from "@/components/ui/Panel";
@@ -65,6 +71,7 @@ export function CalendarPanel() {
     setEvents,
     fetchEventsForRange,
     showToast,
+    settings,
   } = useDashboard();
   const [view, setView] = useState<CalendarView>("month");
   const [viewDate, setViewDate] = useState(() => parseIsoDate(getTodayIso()));
@@ -78,14 +85,23 @@ export function CalendarPanel() {
   const todayIso = getTodayIso();
   const activeDate = selectedDate || todayIso;
   const displayDate = view === "day" ? formatIsoDate(viewDate) : activeDate;
-  const eventsByDate = useMemo(() => groupEventsByDate(events), [events]);
-  const expandedEvents = useMemo(
-    () => ExpandAllEventOccurrences(events),
-    [events],
+  const displayTimezone = ResolveTimezone(settings.timezone);
+  const displayEvents = useMemo(
+    () =>
+      events.map((item) => MapEventToDisplayTimezone(item, displayTimezone)),
+    [events, displayTimezone],
+  );
+  const eventsByDate = useMemo(
+    () => groupEventsByDate(displayEvents),
+    [displayEvents],
+  );
+  const expandedDisplayEvents = useMemo(
+    () => ExpandAllEventOccurrences(displayEvents),
+    [displayEvents],
   );
   const multiDayLaneMap = useMemo(
-    () => GetMultiDayLaneMap(expandedEvents),
-    [expandedEvents],
+    () => GetMultiDayLaneMap(expandedDisplayEvents),
+    [expandedDisplayEvents],
   );
   const weekdayLabels = getWeekdayLabels();
 
@@ -103,7 +119,9 @@ export function CalendarPanel() {
   const openCreateModal = (date: string, time = "") => {
     setSelectedDate(date);
     setEditingEvent(null);
-    setCreateDefaultTime(time);
+    setCreateDefaultTime(
+      time || GetDefaultEventTimeForDisplay(displayTimezone, date),
+    );
     setModalOpen(true);
   };
 
@@ -113,7 +131,9 @@ export function CalendarPanel() {
   };
 
   const openEditModal = (event: DashboardEvent) => {
-    setEditingEvent(resolveBaseEvent(event));
+    setEditingEvent(
+      MapEventToDisplayTimezone(resolveBaseEvent(event), displayTimezone),
+    );
     setModalOpen(true);
   };
 
@@ -157,16 +177,24 @@ export function CalendarPanel() {
   };
 
   const handleSave = (form: EventFormState, editingId: string | null) => {
+    const storageTimes = ConvertEventFormTimesToStorage(form, displayTimezone);
+    const storageForm = { ...form, ...storageTimes };
+
     if (editingId) {
       setEvents((prev) =>
         prev.map((event) =>
-          event.id === editingId ? UpdateEventFromForm(event, form) : event,
+          event.id === editingId
+            ? UpdateEventFromForm(event, storageForm)
+            : event,
         ),
       );
       setSelectedDate(form.date);
       showToast("Updated ✓");
     } else {
-      setEvents((prev) => [...prev, CreateEventFromForm(form, generateId())]);
+      setEvents((prev) => [
+        ...prev,
+        CreateEventFromForm(storageForm, generateId()),
+      ]);
       setSelectedDate(form.date);
       showToast(`${form.type === "task" ? "Task" : "Event"} added ✓`);
     }
@@ -184,7 +212,12 @@ export function CalendarPanel() {
     setEvents((prev) =>
       prev.map((event) =>
         event.id === baseId
-          ? MoveEventOccurrenceToDate(event, payload.fromIso, targetIso)
+          ? MoveStoredEventByDisplayDates(
+              event,
+              payload.fromIso,
+              targetIso,
+              displayTimezone,
+            )
           : event,
       ),
     );
@@ -246,7 +279,7 @@ export function CalendarPanel() {
 
   const monthCells = getMonthCells(viewDate, todayIso);
   const weekCells = getWeekCells(formatIsoDate(viewDate), todayIso);
-  const dayEvents = filterEventsByDate(events, displayDate);
+  const dayEvents = filterEventsByDate(displayEvents, displayDate);
 
   const renderEventCard = (
     item: DashboardEvent,
@@ -599,6 +632,7 @@ export function CalendarPanel() {
               <DayScheduleView
                 displayDate={displayDate}
                 todayIso={todayIso}
+                clockTimezone={ResolveTimezone(settings.timezone)}
                 events={dayEvents}
                 onOpenEvent={openEditModal}
                 onCreateAtTime={(date, time) => openCreateModal(date, time)}

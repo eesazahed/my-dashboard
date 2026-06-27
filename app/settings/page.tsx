@@ -161,10 +161,10 @@ export default function SettingsPage() {
 
         <Panel
           title="Advanced"
-          subtitle="Timezone for the dashboard clock and exported calendar times"
+          subtitle="Clock and calendar display timezone"
         >
           <Select
-            label="Timezone"
+            label="Display timezone"
             value={settings.timezone ?? "America/Chicago"}
             onChange={(e) =>
               setSettings((prev) => ({ ...prev, timezone: e.target.value }))
@@ -176,6 +176,12 @@ export default function SettingsPage() {
               </option>
             ))}
           </Select>
+          <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+            Events are stored in Central Time (e.g. 17:00 CST). Changing this
+            setting converts how times appear on your calendar and in the
+            editor — 17:00 CST becomes 18:00 in Eastern. The iCal feed uses
+            Central so subscribers see the correct local time.
+          </p>
         </Panel>
 
         <Panel title="Portfolio" subtitle="Manual holdings · prices refresh hourly">

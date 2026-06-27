@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { IconChecklist, IconPlus } from "@tabler/icons-react";
 import { useDashboard } from "@/context/DashboardContext";
 import {
@@ -11,6 +11,11 @@ import { filterEventsByDate, formatAgendaTitle, generateId, getTodayIso } from "
 import { CreateEventFromForm, UpdateEventFromForm } from "@/lib/event-utils";
 import { ParseBaseEventId } from "@/lib/recurrence-utils";
 import { FormatEventSchedule } from "@/lib/time-utils";
+import {
+  ConvertEventFormTimesToStorage,
+  MapEventToDisplayTimezone,
+} from "@/lib/timezone-convert";
+import { ResolveTimezone } from "@/lib/timezones";
 import { GetEventDotClasses } from "@/lib/link-colors";
 import type { DashboardEvent } from "@/lib/types";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -19,9 +24,15 @@ import { ItemActionBar } from "@/components/ui/ItemActionBar";
 import { Panel } from "@/components/ui/Panel";
 
 export function AgendaPanel() {
-  const { selectedDate, events, setEvents, showToast } = useDashboard();
+  const { selectedDate, events, setEvents, showToast, settings } = useDashboard();
   const activeDate = selectedDate || getTodayIso();
-  const dayEvents = filterEventsByDate(events, activeDate);
+  const displayTimezone = ResolveTimezone(settings.timezone);
+  const displayEvents = useMemo(
+    () =>
+      events.map((item) => MapEventToDisplayTimezone(item, displayTimezone)),
+    [events, displayTimezone],
+  );
+  const dayEvents = filterEventsByDate(displayEvents, activeDate);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -39,7 +50,7 @@ export function AgendaPanel() {
   const openEdit = (event: DashboardEvent) => {
     const baseId = ParseBaseEventId(event.id);
     const base = events.find((item) => item.id === baseId) ?? event;
-    setEditingEvent(base);
+    setEditingEvent(MapEventToDisplayTimezone(base, displayTimezone));
     setModalOpen(true);
   };
 
@@ -53,15 +64,23 @@ export function AgendaPanel() {
   };
 
   const handleSave = (form: EventFormState, editingId: string | null) => {
+    const storageTimes = ConvertEventFormTimesToStorage(form, displayTimezone);
+    const storageForm = { ...form, ...storageTimes };
+
     if (editingId) {
       setEvents((prev) =>
         prev.map((event) =>
-          event.id === editingId ? UpdateEventFromForm(event, form) : event,
+          event.id === editingId
+            ? UpdateEventFromForm(event, storageForm)
+            : event,
         ),
       );
       showToast("Updated ✓");
     } else {
-      setEvents((prev) => [...prev, CreateEventFromForm(form, generateId())]);
+      setEvents((prev) => [
+        ...prev,
+        CreateEventFromForm(storageForm, generateId()),
+      ]);
       showToast("Added ✓");
     }
     setModalOpen(false);

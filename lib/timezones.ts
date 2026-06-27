@@ -1,5 +1,15 @@
 export const DefaultTimezone = "America/Chicago";
 
+/** Event date/time strings in SQLite are wall-clock values in this zone. */
+export const EventsTimezone = DefaultTimezone;
+
+/** Default time when creating a new timed event (stored in EventsTimezone). */
+export const DefaultEventStorageTime = "17:00";
+
+export function GetEventsTimezone(): string {
+  return EventsTimezone;
+}
+
 export const TimezoneOptions = [
   { id: "America/Chicago", label: "Central Time (CST/CDT)" },
   { id: "America/New_York", label: "Eastern Time (EST/EDT)" },
@@ -30,4 +40,24 @@ export function GetTimezoneLabel(timezone?: string): string {
     TimezoneOptions.find((option) => option.id === resolved)?.label ??
     DefaultTimezone
   );
+}
+
+export function GetNowMinutesInTimezone(timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const hour = parseInt(
+    parts.find((part) => part.type === "hour")?.value ?? "0",
+    10,
+  );
+  const minute = parseInt(
+    parts.find((part) => part.type === "minute")?.value ?? "0",
+    10,
+  );
+
+  return hour * 60 + minute;
 }
