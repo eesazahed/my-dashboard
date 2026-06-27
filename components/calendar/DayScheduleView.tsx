@@ -69,7 +69,10 @@ export function DayScheduleView({
               <button
                 key={event.id}
                 type="button"
-                onClick={() => onOpenEvent(event)}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  onOpenEvent(event);
+                }}
                 className={`truncate rounded px-2 py-1 text-left text-[11px] text-white ${GetEventBarClasses(event.color)}`}
               >
                 {event.title}
@@ -104,12 +107,13 @@ export function DayScheduleView({
                 key={hour}
                 role="button"
                 tabIndex={0}
-                onDoubleClick={() =>
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
                   onCreateAtTime(
                     displayDate,
                     `${String(hour).padStart(2, "0")}:00`,
-                  )
-                }
+                  );
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     onCreateAtTime(
@@ -144,7 +148,10 @@ export function DayScheduleView({
                 <button
                   key={layout.event.id}
                   type="button"
-                  onClick={() => onOpenEvent(layout.event)}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation();
+                    onOpenEvent(layout.event);
+                  }}
                   className={`absolute z-10 overflow-hidden rounded-md border border-white/10 px-2 py-1 text-left text-white shadow-sm transition hover:brightness-110 ${GetEventBarClasses(layout.event.color)}`}
                   style={{
                     top: layout.topPx,

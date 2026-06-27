@@ -1,5 +1,9 @@
 # Updates
 
+## 2026-06-26 (calendar double-click)
+
+- Double-click event → edit modal; double-click empty cell → new event modal (month, week, day)
+
 ## 2026-06-26 (day view time grid)
 
 - Day view: scrollable hourly grid; timed events span correct slots (e.g. 12pm–6pm = 6 hours)

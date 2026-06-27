@@ -428,7 +428,10 @@ export function CalendarPanel() {
                         role="button"
                         tabIndex={0}
                         onClick={() => handleSelectDate(cell.iso)}
-                        onDoubleClick={() => openCreateModal(cell.iso)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          openCreateModal(cell.iso);
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") handleSelectDate(cell.iso);
                         }}
@@ -467,6 +470,9 @@ export function CalendarPanel() {
                                 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                }}
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
                                   if (didDragRef.current) return;
                                   openEditModal(item);
                                 }}
@@ -499,6 +505,9 @@ export function CalendarPanel() {
                                   }, 0);
                                 }}
                                 onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                                onDoubleClick={(e) => {
                                   e.stopPropagation();
                                   if (didDragRef.current) return;
                                   openEditModal(item);
@@ -539,7 +548,10 @@ export function CalendarPanel() {
                       role="button"
                       tabIndex={0}
                       onClick={() => handleSelectDate(cell.iso)}
-                      onDoubleClick={() => openCreateModal(cell.iso)}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        openCreateModal(cell.iso);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleSelectDate(cell.iso);
                       }}
